@@ -1,0 +1,71 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: API-GATEWAY
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/api/auth/**
+
+        - id: student-service
+          uri: lb://STUDENT-SERVICE
+          predicates:
+            - Path=/api/students/**
+
+        - id: academic-service
+          uri: lb://ACADEMIC-SERVICE
+          predicates:
+            - Path=/api/academic/**
+
+        - id: attendance-service
+          uri: lb://ATTENDANCE-SERVICE
+          predicates:
+            - Path=/api/attendance/**
+
+        - id: fee-service
+          uri: lb://FEE-SERVICE
+          predicates:
+            - Path=/api/fees/**
+
+      httpclient:
+        connect-timeout: 3000
+        response-timeout: 10s
+        pool:
+          type: elastic
+          max-idle-time: 15s
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    ip-address: 127.0.0.1
+    hostname: localhost
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

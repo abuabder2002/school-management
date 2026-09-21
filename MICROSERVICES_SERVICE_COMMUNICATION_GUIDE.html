@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>School Management System - Microservices Communication Guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2937;
+    line-height: 1.6;
+    font-size: 13px;
+    background: #ffffff;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  h1 {
+    color: #1e3a8a;
+    font-size: 24px;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 8px;
+    margin-top: 28px;
+    page-break-after: avoid;
+  }
+  h2 {
+    color: #1e40af;
+    font-size: 18px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 5px;
+    margin-top: 22px;
+    page-break-after: avoid;
+  }
+  h3 {
+    color: #1d4ed8;
+    font-size: 15px;
+    margin-top: 16px;
+    page-break-after: avoid;
+  }
+  h4 {
+    color: #374151;
+    font-size: 13.5px;
+    margin-top: 12px;
+    page-break-after: avoid;
+  }
+  p, li {
+    font-size: 12.5px;
+    color: #374151;
+  }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    background-color: #f3f4f6;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    color: #b91c1c;
+  }
+  pre {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    font-size: 11px;
+    line-height: 1.45;
+    page-break-inside: avoid;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    color: #0f172a;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 11.5px;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  th {
+    background-color: #f1f5f9;
+    font-weight: 600;
+    color: #0f172a;
+  }
+  tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+  blockquote {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+    margin: 12px 0;
+    padding: 8px 14px;
+    color: #1e40af;
+    border-radius: 0 4px 4px 0;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+<h1 id="school-management-system-microservices-service-communication-master-guide">School Management System — Microservices Service Communication Master Guide</h1>
+<p><strong>Document Type:</strong> Architecture &amp; Inter-Service Communication Learning Guide<br />
+<strong>Project:</strong> School Management System (Spring Boot + Spring Cloud + React + PostgreSQL)<br />
+<strong>Author:</strong> AI Engineering &amp; Pair Programming Assistant<br />
+<strong>Date:</strong> September 2026<br />
+<strong>Scope:</strong> Educational &amp; Architectural Audit based on the <strong>Actual Running Codebase</strong></p>
+<hr />
+<h2 id="executive-summary-codebase-audit-statement">Executive Summary &amp; Codebase Audit Statement</h2>
+<p>This document is a comprehensive, beginner-friendly learning guide describing <strong>exactly how microservices communicate with each other in this School Management System project</strong>.</p>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>Zero Assumptions &amp; Ground Truth Rule:</strong>
+Every explanation, diagram, configuration parameter, class name, endpoint, and code trace in this guide has been verified against the actual source files in <code>c:\Users\ABDER SHAHEEN\OneDrive\Desktop\School management</code>. No technologies, libraries, or architectural patterns are fabricated. Where a common industry pattern (such as OpenFeign, Kafka, or synchronous inter-service REST calls) is not used, it is explicitly declared: <strong>"Not currently used in this project."</strong></p>
+</blockquote>
+<hr />
+<h1 id="table-of-contents">Table of Contents</h1>
+<ol>
+<li><a href="#step-1--codebase-audit--discovered-technologies">Step 1 — Codebase Audit &amp; Discovered Technologies</a></li>
+<li><a href="#step-2--real-architecture-diagram">Step 2 — Real Architecture Diagram</a></li>
+<li><a href="#step-3--eureka-service-registry--discovery">Step 3 — Eureka Service Registry &amp; Discovery</a></li>
+<li><a href="#step-4--spring-cloud-api-gateway-deep-dive">Step 4 — Spring Cloud API Gateway Deep Dive</a></li>
+<li><a href="#step-5--inter-service-communication-audit--cross-service-pattern">Step 5 — Inter-Service Communication Audit &amp; Cross-Service Pattern</a></li>
+<li><a href="#step-6--openfeign-audit">Step 6 — OpenFeign Audit</a></li>
+<li><a href="#step-7--restclient-audit">Step 7 — RestClient Audit</a></li>
+<li><a href="#step-8--webclient-audit">Step 8 — WebClient Audit</a></li>
+<li><a href="#step-9--distributed-jwt-authentication--security">Step 9 — Distributed JWT Authentication &amp; Security</a></li>
+<li><a href="#step-10--parent--student-data--security-flow">Step 10 — Parent → Student Data &amp; Security Flow</a></li>
+<li><a href="#step-11--teacher--academic--assessment-flow">Step 11 — Teacher → Academic &amp; Assessment Flow</a></li>
+<li><a href="#step-12--fee--payment-lifecycle-flow">Step 12 — Fee &amp; Payment Lifecycle Flow</a></li>
+<li><a href="#step-13--database-ownership-database-per-service">Step 13 — Database Ownership (Database-per-Service)</a></li>
+<li><a href="#step-14--complete-real-request-traces">Step 14 — Complete Real Request Traces (3 End-to-End Walks)</a></li>
+<li><a href="#step-15--core-code-snippets--line-by-line-breakdown">Step 15 — Core Code Snippets &amp; Line-by-Line Breakdown</a></li>
+<li><a href="#step-16--communication-methods-comparison-table">Step 16 — Communication Methods Comparison Table</a></li>
+<li><a href="#step-17--synchronous-vs-asynchronous-communication">Step 17 — Synchronous vs. Asynchronous Communication</a></li>
+<li><a href="#step-18--failure-scenarios--resilience-audit">Step 18 — Failure Scenarios &amp; Resilience Audit</a></li>
+<li><a href="#step-19--top-10-beginner-microservices-mistakes">Step 19 — Top 10 Beginner Microservices Mistakes</a></li>
+<li><a href="#step-20--microservices-technical-interview-preparation">Step 20 — Microservices Technical Interview Preparation</a></li>
+<li><a href="#step-21--10-day-structured-learning-sequence">Step 21 — 10-Day Structured Learning Sequence</a></li>
+<li><a href="#step-22--verification--audit-summary">Step 22 — Verification &amp; Audit Summary</a></li>
+</ol>
+<hr />
+<h1 id="step-1-codebase-audit-discovered-technologies">Step 1 — Codebase Audit &amp; Discovered Technologies</h1>
+<p>A comprehensive static audit was performed across all modules in <code>school-management</code> and <code>school-frontend</code>. Here is the factual inventory of the repository:</p>
+<h3 id="11-microservices-port-map">1.1 Microservices &amp; Port Map</h3>
+<table>
+<thead>
+<tr>
+<th>Module Name</th>
+<th>Application Name</th>
+<th>Port</th>
+<th>Database</th>
+<th>Primary Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service-registry</code></td>
+<td><code>SERVICE-REGISTRY</code></td>
+<td><code>8761</code></td>
+<td>None</td>
+<td>Netflix Eureka Service Registry &amp; Discovery Server</td>
+</tr>
+<tr>
+<td><code>api-gateway</code></td>
+<td><code>API-GATEWAY</code></td>
+<td><code>8080</code></td>
+<td>None</td>
+<td>Spring Cloud Gateway, Dynamic Routing, CORS Preflight</td>
+</tr>
+<tr>
+<td><code>auth-service</code></td>
+<td><code>AUTH-SERVICE</code></td>
+<td><code>8081</code></td>
+<td><code>sms_auth_db</code></td>
+<td>User Registration, Login, BCrypt, JWT Generation</td>
+</tr>
+<tr>
+<td><code>student-service</code></td>
+<td><code>STUDENT-SERVICE</code></td>
+<td><code>8082</code></td>
+<td><code>sms_student_db</code></td>
+<td>Student CRUD, Excel Import/Export (Apache POI)</td>
+</tr>
+<tr>
+<td><code>academic-service</code></td>
+<td><code>ACADEMIC-SERVICE</code></td>
+<td><code>8083</code></td>
+<td><code>sms_academic_db</code></td>
+<td>Classes, Subjects, Exams, Marks, Homework</td>
+</tr>
+<tr>
+<td><code>attendance-service</code></td>
+<td><code>ATTENDANCE-SERVICE</code></td>
+<td><code>8084</code></td>
+<td><code>sms_attendance_db</code></td>
+<td>Daily Attendance, Holidays, Student Leave Requests</td>
+</tr>
+<tr>
+<td><code>fee-service</code></td>
+<td><code>FEE-SERVICE</code></td>
+<td><code>8085</code></td>
+<td><code>sms_fee_db</code></td>
+<td>Fee Invoices, Installment Payments, Status Tracking</td>
+</tr>
+<tr>
+<td><code>school-common</code></td>
+<td><em>(Shared JAR)</em></td>
+<td>—</td>
+<td>None</td>
+<td>Shared Enums, DTOs (<code>ApiResponse</code>), Common Exceptions</td>
+</tr>
+<tr>
+<td><code>school-frontend</code></td>
+<td><em>(Vite React)</em></td>
+<td><code>5173</code>/<code>5175</code></td>
+<td>LocalStorage</td>
+<td>Role-based Web Portal (Admin, Teacher, Parent)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-communication-technology-audit-checklist">1.2 Communication Technology Audit Checklist</h3>
+<ul>
+<li><strong><code>@FeignClient</code> / OpenFeign:</strong> <strong>Not currently used in this project.</strong></li>
+<li><strong><code>RestClient</code> (Spring Boot 3):</strong> <strong>Not currently used in this project.</strong></li>
+<li><strong><code>WebClient</code> (Spring WebFlux):</strong> Used internally within <code>api-gateway</code> for reactive route forwarding, but <strong>not used</strong> in business services for inter-service communication.</li>
+<li><strong><code>RestTemplate</code>:</strong> <strong>Not currently used in this project.</strong></li>
+<li><strong>Direct Service-to-Service HTTP:</strong> <strong>Not currently used in this project.</strong></li>
+<li><strong>Apache Kafka / RabbitMQ:</strong> <strong>Not currently used in this project.</strong></li>
+<li><strong>Eureka Service Discovery:</strong> <strong>Actively used</strong> (<code>spring-cloud-starter-netflix-eureka-client</code> on all services; <code>spring-cloud-starter-netflix-eureka-server</code> on <code>service-registry</code>).</li>
+<li><strong>Spring Cloud Gateway:</strong> <strong>Actively used</strong> (<code>lb://</code> dynamic URI resolution via Eureka).</li>
+<li><strong>Axios:</strong> <strong>Actively used</strong> in <code>school-frontend</code> with a centralized interceptor targeting <code>http://localhost:8080</code>.</li>
+<li><strong>JWT (JSON Web Tokens):</strong> <strong>Actively used</strong> using <code>io.jsonwebtoken:jjwt-api:0.11.5</code> with shared HMAC-SHA256 secret.</li>
+</ul>
+<hr />
+<h1 id="step-2-real-architecture-diagram">Step 2 — Real Architecture Diagram</h1>
+<p>In this project, microservices are <strong>strictly decoupled</strong> and do not query each other directly over the network. Instead, the project uses <strong>Client-Side Orchestration / Gateway Routing</strong> paired with <strong>Stateless JWT Claims Propagation</strong>.</p>
+<h3 id="21-actual-architecture-diagram">2.1 Actual Architecture Diagram</h3>
+<div class="codehilite"><pre><span></span><code><span class="o">+----------------------------------------------------------------------------------------------------+</span>
+<span class="o">|</span><span class="w">                                    </span><span class="nx">REACT</span><span class="w"> </span><span class="nx">FRONTEND</span><span class="w"> </span><span class="p">(</span><span class="nx">Vite</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="p">:</span><span class="mi">5173</span><span class="p">)</span><span class="w">                                  </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Axios</span><span class="w"> </span><span class="nx">Client</span><span class="w"> </span><span class="p">(</span><span class="nx">baseURL</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">http</span><span class="p">:</span><span class="c1">//localhost:8080&#39;)                                                 |</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Request</span><span class="w"> </span><span class="nx">Interceptor</span><span class="p">:</span><span class="w"> </span><span class="nx">Authorization</span><span class="p">:</span><span class="w"> </span><span class="nx">Bearer</span><span class="w"> </span><span class="p">&lt;</span><span class="nx">jwt_token</span><span class="p">&gt;</span><span class="w">                                          </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Client</span><span class="o">-</span><span class="nx">Side</span><span class="w"> </span><span class="nx">Aggregation</span><span class="p">:</span><span class="w"> </span><span class="nx">Promise</span><span class="p">.</span><span class="nx">allSettled</span><span class="p">()</span><span class="w"> </span><span class="nx">calls</span><span class="w"> </span><span class="nx">across</span><span class="w"> </span><span class="nx">multiple</span><span class="w"> </span><span class="nx">domain</span><span class="w"> </span><span class="nx">endpoints</span><span class="w">            </span><span class="o">|</span>
+<span class="o">+----------------------------------------------------------------------------------------------------+</span>
+<span class="w">                                                  </span><span class="o">|</span>
+<span class="w">                                                  </span><span class="o">|</span><span class="w"> </span><span class="nx">HTTP</span><span class="w"> </span><span class="nx">REST</span><span class="w"> </span><span class="nx">Requests</span>
+<span class="w">                                                  </span><span class="nx">v</span>
+<span class="o">+----------------------------------------------------------------------------------------------------+</span>
+<span class="o">|</span><span class="w">                                 </span><span class="nx">SPRING</span><span class="w"> </span><span class="nx">CLOUD</span><span class="w"> </span><span class="nx">API</span><span class="w"> </span><span class="nx">GATEWAY</span><span class="w"> </span><span class="p">(:</span><span class="mi">8080</span><span class="p">)</span><span class="w">                                   </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">CorsWebFilter</span><span class="w"> </span><span class="p">(</span><span class="nx">Allows</span><span class="w"> </span><span class="nx">localhost</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="m m-Double">127.0.0.1</span><span class="w"> </span><span class="nx">ports</span><span class="p">)</span><span class="w">                                              </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Dynamic</span><span class="w"> </span><span class="nx">Route</span><span class="w"> </span><span class="nx">Matching</span><span class="w"> </span><span class="p">(</span><span class="o">/</span><span class="kn">api</span><span class="o">/</span><span class="nx">auth</span><span class="o">/**</span><span class="p">,</span><span class="w"> </span><span class="o">/</span><span class="kn">api</span><span class="o">/</span><span class="nx">students</span><span class="o">/**</span><span class="p">,</span><span class="w"> </span><span class="o">/</span><span class="kn">api</span><span class="o">/</span><span class="nx">academic</span><span class="o">/**</span><span class="p">,</span><span class="w"> </span><span class="nx">etc</span><span class="p">.)</span><span class="w">                 </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">LoadBalancerClientFilter</span><span class="p">:</span><span class="w"> </span><span class="nx">Resolves</span><span class="w"> </span><span class="nx">lb</span><span class="p">:</span><span class="c1">//SERVICE-NAME via Eureka Registry                        |</span>
+<span class="o">+----------------------------------------------------------------------------------------------------+</span>
+<span class="w">         </span><span class="o">^</span><span class="w">                                                                                    </span><span class="o">|</span>
+<span class="w">         </span><span class="o">|</span><span class="w"> </span><span class="nx">Heartbeat</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="nx">Registry</span><span class="w"> </span><span class="nx">Lookup</span><span class="w">                                                        </span><span class="o">|</span><span class="w"> </span><span class="nx">Reverse</span><span class="w"> </span><span class="nx">Proxy</span>
+<span class="w">         </span><span class="nx">v</span><span class="w">                                                                                    </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="nx">Forwards</span>
+<span class="o">+------------------------------------+</span><span class="w">                                                        </span><span class="o">|</span><span class="w">  </span><span class="nx">Authorization</span>
+<span class="o">|</span><span class="w">  </span><span class="nx">EUREKA</span><span class="w"> </span><span class="nx">SERVICE</span><span class="w"> </span><span class="nx">REGISTRY</span><span class="w"> </span><span class="p">(:</span><span class="mi">8761</span><span class="p">)</span><span class="w">   </span><span class="o">|</span><span class="w">                                                        </span><span class="o">|</span><span class="w">  </span><span class="nx">Header</span><span class="p">)</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Keeps</span><span class="w"> </span><span class="nx">instance</span><span class="w"> </span><span class="nx">registry</span><span class="w"> </span><span class="nx">table</span><span class="w">   </span><span class="o">|</span><span class="w">                                                        </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="nx">Eviction</span><span class="w"> </span><span class="nx">timer</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="nx">ms</span><span class="w">          </span><span class="o">|</span><span class="w">                                                        </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="o">-</span><span class="w"> </span><span class="k">Self</span><span class="o">-</span><span class="nx">preservation</span><span class="p">:</span><span class="w"> </span><span class="nx">disabled</span><span class="w">     </span><span class="o">|</span><span class="w">                                                        </span><span class="o">|</span>
+<span class="o">+------------------------------------+</span><span class="w">                                                        </span><span class="o">|</span>
+<span class="w">         </span><span class="o">^</span><span class="w">                 </span><span class="o">^</span><span class="w">                 </span><span class="o">^</span><span class="w">                 </span><span class="o">^</span><span class="w">                 </span><span class="o">^</span><span class="w">            </span><span class="o">|</span>
+<span class="w">         </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">            </span><span class="o">|</span>
+<span class="o">+--------+--------+</span><span class="w"> </span><span class="o">+------+--------+</span><span class="w"> </span><span class="o">+------+--------+</span><span class="w"> </span><span class="o">+------+--------+</span><span class="w"> </span><span class="o">+------+--------+</span><span class="w">   </span><span class="o">|</span>
+<span class="o">|</span><span class="w">   </span><span class="nx">AUTH</span><span class="o">-</span><span class="nx">SERVICE</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="nx">STUDENT</span><span class="o">-</span><span class="nx">SERVICE</span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="nx">ACADEMIC</span><span class="o">-</span><span class="nx">SERVIC</span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="nx">ATTENDANCE</span><span class="o">-</span><span class="nx">SERV</span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">  </span><span class="nx">FEE</span><span class="o">-</span><span class="nx">SERVICE</span><span class="w">  </span><span class="o">|</span><span class="w">   </span><span class="o">|</span>
+<span class="o">|</span><span class="w">     </span><span class="p">(:</span><span class="mi">8081</span><span class="p">)</span><span class="w">     </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">    </span><span class="p">(:</span><span class="mi">8082</span><span class="p">)</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">    </span><span class="p">(:</span><span class="mi">8083</span><span class="p">)</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">    </span><span class="p">(:</span><span class="mi">8084</span><span class="p">)</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">    </span><span class="p">(:</span><span class="mi">8085</span><span class="p">)</span><span class="w">    </span><span class="o">|</span><span class="w">   </span><span class="o">|</span>
+<span class="o">+-----------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="p">&lt;</span><span class="o">--+</span>
+<span class="w">         </span><span class="o">|</span><span class="w">                  </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span><span class="w">                 </span><span class="o">|</span>
+<span class="w">         </span><span class="nx">v</span><span class="w">                  </span><span class="nx">v</span><span class="w">                 </span><span class="nx">v</span><span class="w">                 </span><span class="nx">v</span><span class="w">                 </span><span class="nx">v</span>
+<span class="o">+-----------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span>
+<span class="o">|</span><span class="w">  </span><span class="nx">sms_auth_db</span><span class="w">    </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">sms_student_db</span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="nx">sms_academic_db</span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="nx">sms_attend_db</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w">  </span><span class="nx">sms_fee_db</span><span class="w">   </span><span class="o">|</span>
+<span class="o">|</span><span class="w">  </span><span class="p">(</span><span class="nx">PostgreSQL</span><span class="p">)</span><span class="w">   </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="nx">PostgreSQL</span><span class="p">)</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="nx">PostgreSQL</span><span class="p">)</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="nx">PostgreSQL</span><span class="p">)</span><span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">(</span><span class="nx">PostgreSQL</span><span class="p">)</span><span class="w">  </span><span class="o">|</span>
+<span class="o">+-----------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span><span class="w"> </span><span class="o">+---------------+</span>
+</code></pre></div>
+
+<h3 id="22-how-cross-service-data-correlation-works-without-feign">2.2 How Cross-Service Data Correlation Works Without Feign</h3>
+<p>Since services do not make remote calls to each other:
+1. <strong>Shared Key References:</strong> Services store plain numerical identifiers (e.g. <code>studentId: Long</code>, <code>parentId: Long</code>, <code>examId: Long</code>). There are <strong>no cross-database JPA foreign keys</strong>.
+2. <strong>JWT Claims Propagation:</strong> When a parent logs in, <code>auth-service</code> places <code>userId</code>, <code>role</code>, and <code>studentId</code> into the token payload. Downstream services (<code>student-service</code>, <code>attendance-service</code>) parse the token using a local <code>JwtDecoder</code> without calling <code>auth-service</code>.
+3. <strong>Frontend Aggregation:</strong> When a unified view is needed (e.g., Parent Dashboard showing student name, attendance, fees, marks, homework), React fires parallel requests through the API Gateway, and the browser aggregates the JSON responses.</p>
+<hr />
+<h1 id="step-3-eureka-service-registry-discovery">Step 3 — Eureka Service Registry &amp; Discovery</h1>
+<h3 id="31-what-is-eureka-and-why-do-we-use-it">3.1 What is Eureka and Why Do We Use It?</h3>
+<p>In a microservices architecture, services may run on dynamic IP addresses and ephemeral ports. Instead of hardcoding URLs like <code>http://localhost:8082</code> inside the API Gateway or client applications:
+- <strong>Service Registry (<code>service-registry</code>):</strong> Acts as the "phonebook" or central directory where every service registers its network location (<code>ip-address</code> + <code>port</code>).
+- <strong>Service Discovery:</strong> Allows clients (like <code>api-gateway</code>) to ask Eureka: <em>"Where is STUDENT-SERVICE currently running?"</em> and receive the active IP and port.</p>
+<h3 id="32-service-registry-configuration-service-registrysrcmainresourcesapplicationyml">3.2 Service Registry Configuration (<code>service-registry/src/main/resources/application.yml</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8761</span>
+
+<span class="nt">spring</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">application</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SERVICE-REGISTRY</span>
+
+<span class="nt">eureka</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">instance</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">localhost</span>
+<span class="w">  </span><span class="nt">client</span><span class="p">:</span>
+<span class="w">    </span><span class="c1"># Eureka server does NOT register itself</span>
+<span class="w">    </span><span class="nt">register-with-eureka</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">fetch-registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">service-url</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">defaultZone</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://${eureka.instance.hostname}:${server.port}/eureka/</span>
+<span class="w">  </span><span class="nt">server</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">wait-time-in-ms-when-sync-empty</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">response-cache-update-interval-ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3000</span>
+<span class="w">    </span><span class="nt">eviction-interval-timer-in-ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5000</span>
+<span class="w">    </span><span class="nt">enable-self-preservation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+
+<p><strong>Explanation of Key Lines:</strong>
+- <code>register-with-eureka: false</code>: The Eureka server is the directory itself; it does not need to register as a client.
+- <code>fetch-registry: false</code>: The Eureka server does not need to fetch registry updates from anyone else.
+- <code>enable-self-preservation: false</code>: In local development, if network heartbeats are paused, Eureka aggressively evicts dead instances rather than keeping stale instances alive.
+- <code>eviction-interval-timer-in-ms: 5000</code>: Scans for dead microservices every 5 seconds.</p>
+<h3 id="33-how-microservices-register-eg-student-servicesrcmainresourcesapplicationyml">3.3 How Microservices Register (e.g., <code>student-service/src/main/resources/application.yml</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8082</span>
+
+<span class="nt">spring</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">application</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STUDENT-SERVICE</span>
+
+<span class="nt">eureka</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">client</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">service-url</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">defaultZone</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:8761/eureka/</span>
+<span class="w">    </span><span class="nt">fetch-registry</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">register-with-eureka</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">instance</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">prefer-ip-address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">ip-address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1</span>
+<span class="w">    </span><span class="nt">hostname</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">localhost</span>
+<span class="w">    </span><span class="nt">lease-renewal-interval-in-seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">    </span><span class="nt">lease-expiration-duration-in-seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+
+<p><strong>Line-by-Line Breakdown:</strong>
+1. <code>spring.application.name: STUDENT-SERVICE</code>: Defines the VIP (Virtual IP / Service Name) in Eureka. Always registered in uppercase.
+2. <code>defaultZone: http://localhost:8761/eureka/</code>: The HTTP endpoint of the Eureka server to send registration and heartbeats.
+3. <code>prefer-ip-address: true</code> &amp; <code>ip-address: 127.0.0.1</code>: <strong>Critical local development setting.</strong> Forces Eureka to register the loopback IP <code>127.0.0.1</code> rather than an unreachable WiFi or VPN IP.
+4. <code>lease-renewal-interval-in-seconds: 5</code>: The microservice sends a heartbeat ping to Eureka every 5 seconds to announce it is alive.
+5. <code>lease-expiration-duration-in-seconds: 10</code>: If Eureka receives no heartbeat for 10 seconds, it marks this instance as down and removes it.</p>
+<h3 id="34-what-happens-when-a-service-goes-down">3.4 What Happens When a Service Goes Down?</h3>
+<ol>
+<li>The process terminates or crashes.</li>
+<li>Heartbeats stop arriving at <code>http://localhost:8761/eureka/apps/STUDENT-SERVICE</code>.</li>
+<li>After 10 seconds (<code>lease-expiration-duration</code>), Eureka evicts <code>STUDENT-SERVICE</code> from its cache.</li>
+<li>The API Gateway fetches the updated registry during its 5-second fetch interval (<code>registry-fetch-interval-seconds: 5</code>) and stops routing requests to that dead port.</li>
+<li>When a client requests <code>/api/students/**</code>, the Gateway immediately returns <code>503 Service Unavailable</code> or <code>500 Server Error</code> instead of hanging indefinitely.</li>
+</ol>
+<hr />
+<h1 id="step-4-spring-cloud-api-gateway-deep-dive">Step 4 — Spring Cloud API Gateway Deep Dive</h1>
+<h3 id="41-why-the-frontend-calls-the-gateway-8080-and-not-individual-services">4.1 Why the Frontend Calls the Gateway (:8080) and Not Individual Services</h3>
+<p>If React made direct calls to individual ports:
+- React would have to track 5 different ports (<code>8081</code>, <code>8082</code>, <code>8083</code>, <code>8084</code>, <code>8085</code>).
+- Every single microservice would have to configure and maintain CORS headers.
+- If a service changed port, the frontend code would break.
+- Authentication tokens would have to be handled across disparate endpoints without centralized entry logging.</p>
+<p>By routing everything through <strong><code>http://localhost:8080</code></strong>, the API Gateway serves as a single entry point (Reverse Proxy).</p>
+<h3 id="42-gateway-route-configuration-api-gatewaysrcmainresourcesapplicationyml">4.2 Gateway Route Configuration (<code>api-gateway/src/main/resources/application.yml</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nt">server</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+
+<span class="nt">spring</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">application</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">API-GATEWAY</span>
+<span class="w">  </span><span class="nt">cloud</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gateway</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">discovery</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">locator</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">          </span><span class="nt">lower-case-service-id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">routes</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">auth-service</span>
+<span class="w">          </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://AUTH-SERVICE</span>
+<span class="w">          </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/auth/**</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">student-service</span>
+<span class="w">          </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://STUDENT-SERVICE</span>
+<span class="w">          </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/students/**</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">academic-service</span>
+<span class="w">          </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://ACADEMIC-SERVICE</span>
+<span class="w">          </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/academic/**</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attendance-service</span>
+<span class="w">          </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://ATTENDANCE-SERVICE</span>
+<span class="w">          </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/attendance/**</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fee-service</span>
+<span class="w">          </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://FEE-SERVICE</span>
+<span class="w">          </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/fees/**</span>
+
+<span class="w">      </span><span class="nt">httpclient</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">connect-timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3000</span>
+<span class="w">        </span><span class="nt">response-timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10s</span>
+</code></pre></div>
+
+<h3 id="43-understanding-the-lb-prefix">4.3 Understanding the <code>lb://</code> Prefix</h3>
+<ul>
+<li>When a request matches <code>Path=/api/students/**</code>, the Gateway sees <code>uri: lb://STUDENT-SERVICE</code>.</li>
+<li><code>lb://</code> stands for <strong>Load Balancer</strong>.</li>
+<li>Instead of connecting to a static IP, Spring Cloud Gateway consults its local copy of the Eureka service registry.</li>
+<li>It finds all running instances registered under the name <code>STUDENT-SERVICE</code> (e.g. <code>127.0.0.1:8082</code>) and balances incoming traffic across them.</li>
+</ul>
+<h3 id="44-gateway-cors-configuration-corsconfigjava">4.4 Gateway CORS Configuration (<code>CorsConfig.java</code>)</h3>
+<p>Because React runs on <code>http://localhost:5173</code> (or <code>5175</code>) and API Gateway runs on <code>http://localhost:8080</code>, browsers send an <code>OPTIONS</code> HTTP preflight request before making <code>POST</code>, <code>PUT</code>, or authenticated calls.</p>
+<p>In <code>com.school.gateway.config.CorsConfig</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="nd">@Configuration</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">CorsConfig</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Bean</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">CorsWebFilter</span><span class="w"> </span><span class="nf">corsWebFilter</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">CorsConfiguration</span><span class="w"> </span><span class="n">corsConfig</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">CorsConfiguration</span><span class="p">();</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setAllowedOriginPatterns</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">                </span><span class="s">&quot;http://localhost:*&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;http://127.0.0.1:*&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;http://[::1]:*&quot;</span>
+<span class="w">        </span><span class="p">));</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setAllowedMethods</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;POST&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PUT&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;DELETE&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;OPTIONS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PATCH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;HEAD&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setAllowedHeaders</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setExposedHeaders</span><span class="p">(</span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setAllowCredentials</span><span class="p">(</span><span class="kc">true</span><span class="p">);</span>
+<span class="w">        </span><span class="n">corsConfig</span><span class="p">.</span><span class="na">setMaxAge</span><span class="p">(</span><span class="mi">3600L</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">UrlBasedCorsConfigurationSource</span><span class="w"> </span><span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">UrlBasedCorsConfigurationSource</span><span class="p">();</span>
+<span class="w">        </span><span class="n">source</span><span class="p">.</span><span class="na">registerCorsConfiguration</span><span class="p">(</span><span class="s">&quot;/**&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">corsConfig</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">CorsWebFilter</span><span class="p">(</span><span class="n">source</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>CorsWebFilter</code> intercepts the browser's preflight request and responds with HTTP <code>200 OK</code> and the appropriate <code>Access-Control-Allow-Origin</code> and <code>Access-Control-Allow-Headers</code> headers.</p>
+<hr />
+<h1 id="step-5-inter-service-communication-audit-cross-service-pattern">Step 5 — Inter-Service Communication Audit &amp; Cross-Service Pattern</h1>
+<h3 id="51-the-ground-truth-audit">5.1 The Ground Truth Audit</h3>
+<p>A deep search was conducted across all Java source files and Maven POMs for:
+- <code>@FeignClient</code>
+- <code>RestTemplate</code>
+- <code>RestClient</code>
+- <code>WebClient</code>
+- <code>HttpClient</code> / <code>HttpURLConnection</code>
+- Kafka / RabbitMQ</p>
+<p><strong>Result:</strong></p>
+<blockquote>
+<p><strong>No direct synchronous or asynchronous microservice-to-microservice network calls exist in this codebase.</strong></p>
+</blockquote>
+<h3 id="52-why-does-the-project-work-perfectly-without-service-to-service-calls">5.2 Why Does the Project Work Perfectly Without Service-to-Service Calls?</h3>
+<p>In monolithic systems or naive microservice setups, one service frequently calls another:
+<code>academic-service</code> ──(HTTP)──&gt; <code>student-service</code> ──(HTTP)──&gt; <code>auth-service</code></p>
+<p>This creates <strong>tight coupling, high network latency, cascading failures, and distributed transaction complexity</strong>.</p>
+<p>In this project, the architecture uses a cleaner, more resilient design:
+1. <strong>Decoupled Bounded Contexts:</strong> Each microservice is responsible solely for its own domain table and data:
+   - <code>student-service</code> manages student demographic details.
+   - <code>academic-service</code> manages grades, subjects, and exams.
+   - <code>attendance-service</code> manages attendance dates and leaves.
+   - <code>fee-service</code> manages financial ledgers and invoices.
+2. <strong>Identifier Correlation:</strong> When <code>academic-service</code> records a mark, it simply stores <code>studentId: Long</code>. It does not need to know the student's home address or birth date.
+3. <strong>Stateless JWT Claims:</strong> The user identity and child mapping (<code>studentId</code>) are encoded into the JWT when the user logs in. Every downstream microservice reads this information directly from the token.
+4. <strong>Client-Side Aggregation:</strong> When a user interface requires composite data, the React client queries the respective microservices through the Gateway in parallel using <code>Promise.allSettled()</code>.</p>
+<hr />
+<h1 id="step-6-openfeign-audit">Step 6 — OpenFeign Audit</h1>
+<h3 id="status-in-current-project">Status in Current Project</h3>
+<blockquote>
+<p><strong>"Not currently used in this project."</strong></p>
+</blockquote>
+<h3 id="educational-comparison-what-is-openfeign">Educational Comparison: What is OpenFeign?</h3>
+<p>Spring Cloud OpenFeign is a declarative HTTP web service client. Instead of writing boilerplate HTTP code, a developer defines an interface and annotates it:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Example for learning only — NOT PRESENT IN CURRENT PROJECT:</span>
+<span class="nd">@FeignClient</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;STUDENT-SERVICE&quot;</span><span class="p">)</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">StudentClient</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@GetMapping</span><span class="p">(</span><span class="s">&quot;/api/students/{id}&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">StudentDTO</span><span class="w"> </span><span class="nf">getStudentById</span><span class="p">(</span><span class="nd">@PathVariable</span><span class="p">(</span><span class="s">&quot;id&quot;</span><span class="p">)</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">id</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h4 id="how-openfeign-works-under-the-hood">How OpenFeign Works Under the Hood:</h4>
+<ol>
+<li>At startup, Spring scans for <code>@EnableFeignClients</code> and <code>@FeignClient</code>.</li>
+<li>Spring creates a dynamic JDK runtime proxy implementation of the interface.</li>
+<li>When <code>studentClient.getStudentById(1L)</code> is invoked, OpenFeign queries Eureka for <code>STUDENT-SERVICE</code>, constructs an HTTP <code>GET /api/students/1</code>, executes the request, deserializes the JSON response into <code>StudentDTO</code>, and returns it.</li>
+<li>If target service is unavailable, OpenFeign throws a <code>FeignException</code> unless a fallback factory is configured.</li>
+</ol>
+<p><strong>Why this project does not use it:</strong> OpenFeign adds unnecessary complexity for a system whose domain models are cleanly segregated and aggregated via the frontend.</p>
+<hr />
+<h1 id="step-7-restclient-audit">Step 7 — RestClient Audit</h1>
+<h3 id="status-in-current-project_1">Status in Current Project</h3>
+<blockquote>
+<p><strong>"Not currently used in this project."</strong></p>
+</blockquote>
+<h3 id="educational-comparison-what-is-restclient">Educational Comparison: What is RestClient?</h3>
+<p>Introduced in <strong>Spring Boot 3.2 / Spring Framework 6.1</strong>, <code>RestClient</code> is a modern, synchronous HTTP client that provides a fluent, functional API similar to <code>WebClient</code>, but designed for synchronous execution on standard non-reactive servlets.</p>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Example for learning only — NOT PRESENT IN CURRENT PROJECT:</span>
+<span class="n">RestClient</span><span class="w"> </span><span class="n">restClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RestClient</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">baseUrl</span><span class="p">(</span><span class="s">&quot;http://localhost:8082&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span>
+
+<span class="n">StudentDTO</span><span class="w"> </span><span class="n">student</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">restClient</span><span class="p">.</span><span class="na">get</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">uri</span><span class="p">(</span><span class="s">&quot;/api/students/{id}&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">1L</span><span class="p">)</span>
+<span class="w">    </span><span class="p">.</span><span class="na">retrieve</span><span class="p">()</span>
+<span class="w">    </span><span class="p">.</span><span class="na">body</span><span class="p">(</span><span class="n">StudentDTO</span><span class="p">.</span><span class="na">class</span><span class="p">);</span>
+</code></pre></div>
+
+<p><strong>Why this project does not use it:</strong> There is no requirement in this architecture for one backend service to invoke another during transaction execution.</p>
+<hr />
+<h1 id="step-8-webclient-audit">Step 8 — WebClient Audit</h1>
+<h3 id="status-in-current-project_2">Status in Current Project</h3>
+<blockquote>
+<p><strong>"WebClient is not currently used for business service-to-service communication in this project."</strong></p>
+</blockquote>
+<h3 id="nuance-webflux-runtime-in-api-gateway">Nuance: WebFlux Runtime in API Gateway</h3>
+<p>The <code>api-gateway</code> module depends on <code>spring-cloud-starter-gateway</code>, which runs on a reactive <strong>Project Reactor / Netty</strong> engine (not Tomcat). Gateway internally uses reactive HTTP dispatching to forward packets to downstream services, but <strong>no custom <code>WebClient</code> bean is injected into any business service</strong> (<code>student-service</code>, <code>auth-service</code>, etc.).</p>
+<hr />
+<h1 id="step-9-distributed-jwt-authentication-security">Step 9 — Distributed JWT Authentication &amp; Security</h1>
+<p>The system employs <strong>Stateless Distributed Token Authentication</strong> with a symmetric shared secret.</p>
+<h3 id="91-the-step-by-step-flow">9.1 The Step-by-Step Flow</h3>
+<div class="codehilite"><pre><span></span><code><span class="mf">1.</span><span class="w"> </span><span class="n">User</span><span class="w"> </span><span class="n">enters</span><span class="w"> </span><span class="n">email</span><span class="w"> </span><span class="err">&amp;</span><span class="w"> </span><span class="n">password</span><span class="w"> </span><span class="kr">on</span><span class="w"> </span><span class="n">React</span><span class="w"> </span><span class="nb">Log</span><span class="n">in</span><span class="w"> </span><span class="n">page</span><span class="mf">.</span>
+<span class="mf">2.</span><span class="w"> </span><span class="n">React</span><span class="w"> </span><span class="n">sends</span><span class="w"> </span><span class="nb">POS</span><span class="n">T</span><span class="w"> </span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mf">8080</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">auth</span><span class="o">/</span><span class="nb">log</span><span class="n">in</span><span class="mf">.</span>
+<span class="mf">3.</span><span class="w"> </span><span class="n">API</span><span class="w"> </span><span class="n">Gateway</span><span class="w"> </span><span class="n">matches</span><span class="w"> </span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">auth</span><span class="o">/**</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">routes</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="n">AUTH</span><span class="o">-</span><span class="n">SERVICE</span><span class="w"> </span><span class="p">(:</span><span class="mf">8081</span><span class="p">)</span><span class="mf">.</span>
+<span class="mf">4.</span><span class="w"> </span><span class="n">AuthController</span><span class="w"> </span><span class="n">passes</span><span class="w"> </span><span class="n">credentials</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="n">UserService</span><span class="mf">.</span><span class="nb">log</span><span class="n">in</span><span class="p">()</span><span class="mf">.</span>
+<span class="mf">5.</span><span class="w"> </span><span class="n">UserService</span><span class="w"> </span><span class="n">checks</span><span class="w"> </span><span class="n">email</span><span class="w"> </span><span class="n">against</span><span class="w"> </span><span class="nb">Pos</span><span class="n">tgreSQL</span><span class="w"> </span><span class="kd">data</span><span class="n">base</span><span class="w"> </span><span class="p">(</span><span class="n">sms_auth_db</span><span class="p">)</span><span class="mf">.</span>
+<span class="mf">6.</span><span class="w"> </span><span class="n">Password</span><span class="w"> </span><span class="n">verified</span><span class="w"> </span><span class="n">using</span><span class="w"> </span><span class="n">BCryptPasswordEncoder</span><span class="mf">.</span><span class="n">matches</span><span class="p">()</span><span class="mf">.</span>
+<span class="mf">7.</span><span class="w"> </span><span class="n">JwtUtil</span><span class="mf">.</span><span class="n">generateToken</span><span class="p">()</span><span class="w"> </span><span class="n">generates</span><span class="w"> </span><span class="n">HMAC</span><span class="o">-</span><span class="n">SHA256</span><span class="w"> </span><span class="kr">to</span><span class="n">ken</span><span class="w"> </span><span class="n">embedding</span><span class="p">:</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">subject</span><span class="p">:</span><span class="w"> </span><span class="n">email</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">claim</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="mf">.</span><span class="kr">get</span><span class="n">Id</span><span class="p">())</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">claim</span><span class="p">(</span><span class="s">&quot;role&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="mf">.</span><span class="kr">get</span><span class="n">Role</span><span class="p">()</span><span class="mf">.</span><span class="n">name</span><span class="p">())</span>
+<span class="w">   </span><span class="o">-</span><span class="w"> </span><span class="n">claim</span><span class="p">(</span><span class="s">&quot;studentId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">user</span><span class="mf">.</span><span class="kr">get</span><span class="n">StudentId</span><span class="p">())</span><span class="w">  </span><span class="o">&lt;--</span><span class="w"> </span><span class="n">populated</span><span class="w"> </span><span class="kr">if</span><span class="w"> </span><span class="n">PARENT</span>
+<span class="mf">8.</span><span class="w"> </span><span class="n">AuthResponse</span><span class="w"> </span><span class="kr">return</span><span class="n">s</span><span class="w"> </span><span class="err">{</span><span class="w"> </span><span class="kr">to</span><span class="n">ken</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bearer&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">userId</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">email</span><span class="p">,</span><span class="w"> </span><span class="n">role</span><span class="p">,</span><span class="w"> </span><span class="n">studentId</span><span class="w"> </span><span class="err">}</span><span class="mf">.</span>
+<span class="mf">9.</span><span class="w"> </span><span class="n">React</span><span class="w"> </span><span class="kr">save</span><span class="n">s</span><span class="w"> </span><span class="kr">to</span><span class="n">ken</span><span class="w"> </span><span class="nb">int</span><span class="n">o</span><span class="w"> </span><span class="n">localStorage</span><span class="mf">.</span><span class="n">setItem</span><span class="p">(</span><span class="err">&#39;</span><span class="kr">to</span><span class="n">ken</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="kr">to</span><span class="n">ken</span><span class="p">)</span><span class="mf">.</span>
+<span class="mf">10.</span><span class="w"> </span><span class="n">Axios</span><span class="w"> </span><span class="n">Request</span><span class="w"> </span><span class="nb">Int</span><span class="n">erceptor</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="n">api</span><span class="mf">.</span><span class="n">js</span><span class="w"> </span><span class="n">automatically</span><span class="w"> </span><span class="n">adds</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="n">ALL</span><span class="w"> </span><span class="n">subsequent</span><span class="w"> </span><span class="n">requests</span><span class="p">:</span>
+<span class="w">    </span><span class="n">Authorization</span><span class="p">:</span><span class="w"> </span><span class="n">Bearer</span><span class="w"> </span><span class="o">&lt;</span><span class="kr">to</span><span class="n">ken</span><span class="o">&gt;</span>
+<span class="mf">11.</span><span class="w"> </span><span class="n">When</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="n">is</span><span class="w"> </span><span class="n">sent</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="n">localhost</span><span class="p">:</span><span class="mf">8080</span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">attendance</span><span class="o">/</span><span class="n">leave</span><span class="p">:</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">Gateway</span><span class="w"> </span><span class="kr">for</span><span class="n">wards</span><span class="w"> </span><span class="n">request</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">Authorization</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="kr">to</span><span class="w"> </span><span class="n">ATTENDANCE</span><span class="o">-</span><span class="n">SERVICE</span><span class="w"> </span><span class="p">(:</span><span class="mf">8084</span><span class="p">)</span><span class="mf">.</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">AttendanceController</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="n">jwtDecoder</span><span class="mf">.</span><span class="n">extractRaw</span><span class="p">(</span><span class="n">authHeader</span><span class="p">)</span><span class="mf">.</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">JwtDecoder</span><span class="w"> </span><span class="nb">val</span><span class="n">idates</span><span class="w"> </span><span class="n">signature</span><span class="w"> </span><span class="n">locally</span><span class="w"> </span><span class="n">using</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">shared</span><span class="w"> </span><span class="n">secret</span><span class="mf">.</span>
+<span class="w">    </span><span class="o">-</span><span class="w"> </span><span class="n">AttendanceController</span><span class="w"> </span><span class="n">extracts</span><span class="w"> </span><span class="n">userId</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">studentId</span><span class="w"> </span><span class="n">directly</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="kr">to</span><span class="n">ken</span><span class="w"> </span><span class="n">claims</span><span class="err">!</span>
+</code></pre></div>
+
+<h3 id="92-the-shared-secret-secret-key">9.2 The Shared Secret Secret Key</h3>
+<p>In <code>auth-service</code>, <code>student-service</code>, and <code>attendance-service</code> <code>application.yml</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="nt">jwt</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">secret</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${JWT_SECRET:SchoolManagementSystemSecretKey2024SuperSecretKeyForJWTTokenGeneration}</span>
+<span class="w">  </span><span class="nt">expiration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">86400000</span><span class="w">  </span><span class="c1"># 24 hours in ms</span>
+</code></pre></div>
+
+<p>Because both services share the exact same 256-bit cryptographic secret, <strong><code>student-service</code> and <code>attendance-service</code> can verify the signature and trust the claims without calling <code>auth-service</code>!</strong></p>
+<h3 id="93-inspection-of-jwtutiljava-in-auth-service">9.3 Inspection of <code>JwtUtil.java</code> (in <code>auth-service</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">generateToken</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">email</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">role</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">userId</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">studentId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="n">builder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Jwts</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="na">setSubject</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="na">claim</span><span class="p">(</span><span class="s">&quot;role&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">role</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="na">claim</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">userId</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="na">setIssuedAt</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Date</span><span class="p">())</span>
+<span class="w">            </span><span class="p">.</span><span class="na">setExpiration</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Date</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">currentTimeMillis</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">jwtExpiration</span><span class="p">));</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">studentId</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">builder</span><span class="p">.</span><span class="na">claim</span><span class="p">(</span><span class="s">&quot;studentId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">studentId</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">builder</span><span class="p">.</span><span class="na">signWith</span><span class="p">(</span><span class="n">getSigningKey</span><span class="p">(),</span><span class="w"> </span><span class="n">SignatureAlgorithm</span><span class="p">.</span><span class="na">HS256</span><span class="p">).</span><span class="na">compact</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h3 id="94-inspection-of-jwtdecoderjava-in-student-service-attendance-service">9.4 Inspection of <code>JwtDecoder.java</code> (in <code>student-service</code> &amp; <code>attendance-service</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nd">@Component</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">JwtDecoder</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Value</span><span class="p">(</span><span class="s">&quot;${jwt.secret}&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">jwtSecret</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Key</span><span class="w"> </span><span class="nf">getSigningKey</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">Keys</span><span class="p">.</span><span class="na">hmacShaKeyFor</span><span class="p">(</span><span class="n">jwtSecret</span><span class="p">.</span><span class="na">getBytes</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isValidToken</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">StringUtils</span><span class="p">.</span><span class="na">hasText</span><span class="p">(</span><span class="n">token</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+<span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">Jwts</span><span class="p">.</span><span class="na">parserBuilder</span><span class="p">().</span><span class="na">setSigningKey</span><span class="p">(</span><span class="n">getSigningKey</span><span class="p">()).</span><span class="na">build</span><span class="p">().</span><span class="na">parseClaimsJws</span><span class="p">(</span><span class="n">token</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">JwtException</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="nf">getStudentId</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Claims</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Jwts</span><span class="p">.</span><span class="na">parserBuilder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">setSigningKey</span><span class="p">(</span><span class="n">getSigningKey</span><span class="p">()).</span><span class="na">build</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">parseClaimsJws</span><span class="p">(</span><span class="n">token</span><span class="p">).</span><span class="na">getBody</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">claims</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="s">&quot;studentId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="p">.</span><span class="na">class</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="nf">getUserId</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Claims</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Jwts</span><span class="p">.</span><span class="na">parserBuilder</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">setSigningKey</span><span class="p">(</span><span class="n">getSigningKey</span><span class="p">()).</span><span class="na">build</span><span class="p">()</span>
+<span class="w">                </span><span class="p">.</span><span class="na">parseClaimsJws</span><span class="p">(</span><span class="n">token</span><span class="p">).</span><span class="na">getBody</span><span class="p">();</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">claims</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="s">&quot;userId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="p">.</span><span class="na">class</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">extractRaw</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">authHeader</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">StringUtils</span><span class="p">.</span><span class="na">hasText</span><span class="p">(</span><span class="n">authHeader</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">authHeader</span><span class="p">.</span><span class="na">startsWith</span><span class="p">(</span><span class="s">&quot;Bearer &quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">authHeader</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="mi">7</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h1 id="step-10-parent-student-data-security-flow">Step 10 — Parent → Student Data &amp; Security Flow</h1>
+<p>One of the most critical aspects of this project is how a Parent user is associated with their child and how security is enforced.</p>
+<h3 id="101-how-parent-is-linked-to-student-in-the-database">10.1 How Parent is Linked to Student in the Database</h3>
+<p>In <code>auth-service/src/main/java/com/school/auth/entity/User.java</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="nd">@Entity</span>
+<span class="nd">@Table</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;users&quot;</span><span class="p">)</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">User</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nd">@Id</span>
+<span class="w">    </span><span class="nd">@GeneratedValue</span><span class="p">(</span><span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">GenerationType</span><span class="p">.</span><span class="na">IDENTITY</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">email</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">password</span><span class="p">;</span>
+
+<span class="w">    </span><span class="nd">@Enumerated</span><span class="p">(</span><span class="n">EnumType</span><span class="p">.</span><span class="na">STRING</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Role</span><span class="w"> </span><span class="n">role</span><span class="p">;</span><span class="w"> </span><span class="c1">// ADMIN, TEACHER, PARENT</span>
+
+<span class="w">    </span><span class="nd">@Column</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;student_id&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">studentId</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><strong>Architecture Rule Illustrated Here:</strong>
+Notice that <code>studentId</code> is a plain <code>Long</code> column. It is <strong>not</strong> a JPA <code>@ManyToOne</code> or <code>@JoinColumn</code> to <code>Student</code>. Why? Because <code>Student</code> is in a completely different database (<code>sms_student_db</code>), managed by a different service (<code>student-service</code>).</p>
+<h3 id="102-admin-creates-parent-account">10.2 Admin Creates Parent Account</h3>
+<p>Admin calls <code>POST /api/auth/parents</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;David Miller&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;email&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;david.miller@example.com&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Password@123&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;studentId&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">14</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p><code>UserService.createParent()</code> validates that <code>studentId != null</code>, encodes the password, sets <code>role = Role.PARENT</code>, and saves the user record to <code>sms_auth_db</code>.</p>
+<h3 id="103-parent-login-dashboard-data-loading">10.3 Parent Login &amp; Dashboard Data Loading</h3>
+<ol>
+<li>Parent logs in. The token returned contains <code>studentId: 14</code>.</li>
+<li>In <code>ParentDashboard.jsx</code>:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useAuth</span><span class="p">();</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">studentId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">studentId</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">loadAllData</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// Step 1: Fetch child profile from student-service</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">stuRes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">studentService</span><span class="p">.</span><span class="nx">getStudentById</span><span class="p">(</span><span class="nx">studentId</span><span class="p">);</span>
+<span class="w">  </span><span class="nx">setChild</span><span class="p">(</span><span class="nx">stuRes</span><span class="p">.</span><span class="nx">data</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// Step 2: Concurrently fetch attendance, fees, marks, homework, holidays, leaves</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">attRes</span><span class="p">,</span><span class="w"> </span><span class="nx">feeRes</span><span class="p">,</span><span class="w"> </span><span class="nx">mrkRes</span><span class="p">,</span><span class="w"> </span><span class="nx">hwRes</span><span class="p">,</span><span class="w"> </span><span class="nx">holRes</span><span class="p">,</span><span class="w"> </span><span class="nx">lvRes</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nb">Promise</span><span class="p">.</span><span class="nx">allSettled</span><span class="p">([</span>
+<span class="w">    </span><span class="nx">attendanceService</span><span class="p">.</span><span class="nx">getAttendanceByStudent</span><span class="p">(</span><span class="nx">studentId</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">feeService</span><span class="p">.</span><span class="nx">getFeesByStudent</span><span class="p">(</span><span class="nx">studentId</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">academicService</span><span class="p">.</span><span class="nx">getMarksByStudent</span><span class="p">(</span><span class="nx">studentId</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">homeworkService</span><span class="p">.</span><span class="nx">getByClass</span><span class="p">(</span><span class="nx">stuRes</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">className</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">holidayService</span><span class="p">.</span><span class="nx">getAll</span><span class="p">(),</span>
+<span class="w">    </span><span class="nx">leaveService</span><span class="p">.</span><span class="nx">getMyLeave</span><span class="p">(),</span>
+<span class="w">  </span><span class="p">]);</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<h3 id="104-enforcing-ownership-preventing-unauthorized-data-access">10.4 Enforcing Ownership &amp; Preventing Unauthorized Data Access</h3>
+<p>What prevents Parent A from viewing Parent B's child data or submitting leave for someone else?
+1. <strong>In <code>StudentController.java</code> (<code>getStudentsByParent</code>):</strong></p>
+<div class="codehilite"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;PARENT&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">role</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">parentId</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">callerUserId</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">ResponseEntity</span><span class="p">.</span><span class="na">status</span><span class="p">(</span><span class="n">HttpStatus</span><span class="p">.</span><span class="na">FORBIDDEN</span><span class="p">)</span>
+<span class="w">            </span><span class="p">.</span><span class="na">body</span><span class="p">(</span><span class="n">ApiResponse</span><span class="p">.</span><span class="na">error</span><span class="p">(</span><span class="s">&quot;Forbidden: you can only view your own children&quot;</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ol>
+<li><strong>In <code>AttendanceController.java</code> (<code>submitLeave</code>):</strong></li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Notice: studentId is NEVER accepted from the request body!</span>
+<span class="c1">// It is read straight from the cryptographically verified JWT token:</span>
+<span class="n">Long</span><span class="w"> </span><span class="n">studentId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">jwtDecoder</span><span class="p">.</span><span class="na">getStudentId</span><span class="p">(</span><span class="n">token</span><span class="p">);</span>
+<span class="n">Long</span><span class="w"> </span><span class="n">parentId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">jwtDecoder</span><span class="p">.</span><span class="na">getUserId</span><span class="p">(</span><span class="n">token</span><span class="p">);</span>
+
+<span class="n">LeaveRequest</span><span class="w"> </span><span class="n">saved</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">attendanceService</span><span class="p">.</span><span class="na">submitLeave</span><span class="p">(</span><span class="n">studentId</span><span class="p">,</span><span class="w"> </span><span class="n">parentId</span><span class="p">,</span><span class="w"> </span><span class="n">request</span><span class="p">);</span>
+</code></pre></div>
+
+<p>Even if an attacker modifies the request JSON payload, the backend ignores it and uses the token's embedded <code>studentId</code>.</p>
+<hr />
+<h1 id="step-11-teacher-academic-assessment-flow">Step 11 — Teacher → Academic &amp; Assessment Flow</h1>
+<h3 id="111-the-workflow">11.1 The Workflow</h3>
+<p>A teacher needs to grade students across exams and subjects.</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Teacher</span><span class="w"> </span><span class="n">Dashboard</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="mf">1.</span><span class="w"> </span><span class="n">Loads</span><span class="w"> </span><span class="kr">all</span><span class="w"> </span><span class="n">students</span><span class="o">:</span><span class="w"> </span><span class="n">studentService</span><span class="p">.</span><span class="n">getAllStudents</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">STUDENT</span><span class="o">-</span><span class="kr">SERVICE</span><span class="w"> </span><span class="p">(</span><span class="o">:</span><span class="mi">8082</span><span class="p">)</span>
+<span class="mf">2.</span><span class="w"> </span><span class="n">Loads</span><span class="w"> </span><span class="kr">all</span><span class="w"> </span><span class="n">exams</span><span class="o">:</span><span class="w"> </span><span class="n">academicService</span><span class="p">.</span><span class="n">getAllExams</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">ACADEMIC</span><span class="o">-</span><span class="kr">SERVICE</span><span class="w"> </span><span class="p">(</span><span class="o">:</span><span class="mi">8083</span><span class="p">)</span>
+<span class="mf">3.</span><span class="w"> </span><span class="n">Loads</span><span class="w"> </span><span class="kr">all</span><span class="w"> </span><span class="n">subjects</span><span class="o">:</span><span class="w"> </span><span class="n">academicService</span><span class="p">.</span><span class="n">getAllSubjects</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">ACADEMIC</span><span class="o">-</span><span class="kr">SERVICE</span><span class="w"> </span><span class="p">(</span><span class="o">:</span><span class="mi">8083</span><span class="p">)</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">Teacher</span><span class="w"> </span><span class="n">selects</span><span class="w"> </span><span class="n">Exam</span><span class="w"> </span><span class="err">#</span><span class="mi">1</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Midterm Exam&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Subject</span><span class="w"> </span><span class="err">#</span><span class="mi">2</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;Mathematics&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">Teacher</span><span class="w"> </span><span class="n">inputs</span><span class="w"> </span><span class="n">marks</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">each</span><span class="w"> </span><span class="n">student</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">marksMap</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">Teacher</span><span class="w"> </span><span class="n">clicks</span><span class="w"> </span><span class="s">&quot;Submit Evaluation Marks&quot;</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">academicService</span><span class="p">.</span><span class="n">submitMarks</span><span class="p">({</span><span class="w"> </span><span class="n">studentId</span><span class="o">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="n">examId</span><span class="o">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">subjectId</span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">marksObtained</span><span class="o">:</span><span class="w"> </span><span class="mi">88</span><span class="p">,</span><span class="w"> </span><span class="n">maxMarks</span><span class="o">:</span><span class="w"> </span><span class="mi">100</span><span class="w"> </span><span class="p">})</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">API</span><span class="w"> </span><span class="n">Gateway</span><span class="w"> </span><span class="n">routes</span><span class="w"> </span><span class="n">POST</span><span class="w"> </span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">academic</span><span class="o">/</span><span class="n">marks</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">ACADEMIC</span><span class="o">-</span><span class="kr">SERVICE</span><span class="w"> </span><span class="p">(</span><span class="o">:</span><span class="mi">8083</span><span class="p">)</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">AcademicController</span><span class="p">.</span><span class="n">createMark</span><span class="p">()</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="n">AcademicService</span><span class="p">.</span><span class="n">createMark</span><span class="p">()</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">Saved</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">marks</span><span class="w"> </span><span class="nf">table</span><span class="w"> </span><span class="kr">in</span><span class="w"> </span><span class="n">sms_academic_db</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="kr">When</span><span class="w"> </span><span class="n">Parent</span><span class="w"> </span><span class="n">logs</span><span class="w"> </span><span class="kr">in</span><span class="p">,</span><span class="w"> </span><span class="n">ParentDashboard</span><span class="w"> </span><span class="n">calls</span><span class="w"> </span><span class="n">GET</span><span class="w"> </span><span class="o">/</span><span class="n">api</span><span class="o">/</span><span class="n">academic</span><span class="o">/</span><span class="n">marks</span><span class="o">/</span><span class="n">student</span><span class="o">/</span><span class="mi">5</span>
+<span class="w">  </span><span class="err">↓</span>
+<span class="n">Marks</span><span class="w"> </span><span class="n">appear</span><span class="w"> </span><span class="n">immediately</span><span class="w"> </span><span class="kr">in</span><span class="w"> </span><span class="n">Parent</span><span class="w"> </span><span class="n">portal</span><span class="o">!</span>
+</code></pre></div>
+
+<h3 id="112-entity-model-academic-servicemarkjava">11.2 Entity Model (<code>academic-service/.../Mark.java</code>)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nd">@Entity</span>
+<span class="nd">@Table</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;marks&quot;</span><span class="p">)</span>
+<span class="nd">@Data</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">Mark</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nd">@Id</span>
+<span class="w">    </span><span class="nd">@GeneratedValue</span><span class="p">(</span><span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">GenerationType</span><span class="p">.</span><span class="na">IDENTITY</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+
+<span class="w">    </span><span class="nd">@Column</span><span class="p">(</span><span class="n">nullable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">studentId</span><span class="p">;</span><span class="w"> </span><span class="c1">// Plain Long reference to student-service</span>
+
+<span class="w">    </span><span class="nd">@Column</span><span class="p">(</span><span class="n">nullable</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="n">examId</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">Integer</span><span class="w"> </span><span class="n">marksObtained</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">grade</span><span class="p">;</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">remarks</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<hr />
+<h1 id="step-12-fee-payment-lifecycle-flow">Step 12 — Fee &amp; Payment Lifecycle Flow</h1>
+<h3 id="121-the-fee-entities-fee-service">12.1 The Fee Entities (<code>fee-service</code>)</h3>
+<p>The <code>fee-service</code> handles tuition, transport, library, and examination fees:
+- <strong><code>Fee</code> Entity (<code>sms_fee_db.fees</code>):</strong> Holds <code>studentId</code>, <code>totalAmount</code>, <code>paidAmount</code>, <code>pendingAmount</code>, <code>status</code> (<code>PAID</code>, <code>PARTIAL</code>, <code>UNPAID</code>), <code>dueDate</code>, and <code>feeType</code>.
+- <strong><code>Payment</code> Entity (<code>sms_fee_db.payments</code>):</strong> Holds <code>feeId</code>, <code>amountPaid</code>, <code>paymentDate</code>, <code>paymentMethod</code> (<code>CASH</code>, <code>ONLINE</code>, <code>BANK_TRANSFER</code>, <code>CHEQUE</code>), and <code>note</code>.</p>
+<h3 id="122-admin-fee-creation-flow">12.2 Admin Fee Creation Flow</h3>
+<ol>
+<li>Admin selects a student on <code>FeesPage.jsx</code>.</li>
+<li>Admin clicks "Generate Fee Invoice" (e.g., Tuition: $1,200).</li>
+<li>React calls <code>feeService.createFee(...)</code>.</li>
+<li>Gateway routes <code>POST /api/fees</code> to <code>FEE-SERVICE (:8085)</code>.</li>
+<li><code>FeeService</code> computes:</li>
+<li><code>paidAmount = 0.00</code></li>
+<li><code>pendingAmount = totalAmount - paidAmount = 1200.00</code></li>
+<li><code>status = UNPAID</code></li>
+<li>Persisted to <code>sms_fee_db</code>.</li>
+</ol>
+<h3 id="123-payment-recording-flow">12.3 Payment Recording Flow</h3>
+<ol>
+<li>Admin records payment of $400.</li>
+<li>React calls <code>feeService.recordPayment(feeId, { amountPaid: 400, paymentMethod: 'ONLINE' })</code>.</li>
+<li><code>POST /api/fees/{feeId}/payments</code> reaches <code>FeeController.recordPayment()</code>.</li>
+<li><code>FeeService.recordPayment()</code> executes transaction:</li>
+<li>Creates new <code>Payment</code> record with <code>amountPaid = 400.00</code>.</li>
+<li>Fetches parent <code>Fee</code> record.</li>
+<li>Updates <code>fee.paidAmount = fee.paidAmount + 400 = 400.00</code>.</li>
+<li>Updates <code>fee.pendingAmount = fee.totalAmount - fee.paidAmount = 800.00</code>.</li>
+<li>Updates <code>status = FeeStatus.PARTIAL</code>.</li>
+<li>Saves both records to <code>sms_fee_db</code>.</li>
+<li>Parent opening <code>ParentDashboard.jsx</code> sees outstanding dues reduced to $800.00 in real-time.</li>
+</ol>
+<hr />
+<h1 id="step-13-database-ownership-database-per-service">Step 13 — Database Ownership (Database-per-Service)</h1>
+<h3 id="131-microservices-golden-rule-private-databases">13.1 Microservices Golden Rule: Private Databases</h3>
+<p>Each service possesses exclusive ownership of its database:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">+-------------------+</span><span class="c">       </span><span class="nb">+--------------------+</span><span class="c">       </span><span class="nb">+--------------------+</span>
+<span class="c">|   AUTH</span><span class="nb">-</span><span class="c">SERVICE    |       |  STUDENT</span><span class="nb">-</span><span class="c">SERVICE   |       |  ACADEMIC</span><span class="nb">-</span><span class="c">SERVICE  |</span>
+<span class="nb">+-------------------+</span><span class="c">       </span><span class="nb">+--------------------+</span><span class="c">       </span><span class="nb">+--------------------+</span>
+<span class="c">          |                           |                            |</span>
+<span class="c">          v                           v                            v</span>
+<span class="c">   </span><span class="k">[</span><span class="c">sms_auth_db</span><span class="k">]</span><span class="c">              </span><span class="k">[</span><span class="c">sms_student_db</span><span class="k">]</span><span class="c">             </span><span class="k">[</span><span class="c">sms_academic_db</span><span class="k">]</span>
+</code></pre></div>
+
+<h3 id="132-why-direct-cross-database-access-is-prohibited">13.2 Why Direct Cross-Database Access is Prohibited</h3>
+<p>Beginners often ask: <em>"Why can't <code>academic-service</code> just run a SQL JOIN on <code>sms_student_db.students</code>?"</em></p>
+<p><strong>Reasons why this breaks microservices architecture:</strong>
+1. <strong>Schema Coupling:</strong> If <code>student-service</code> renames column <code>name</code> to <code>first_name</code> and <code>last_name</code>, <code>academic-service</code> queries crash silently.
+2. <strong>Security Vulnerability:</strong> Bypasses domain validation, business logic, and security rules enforced in the owning service.
+3. <strong>Connection Pool Contention:</strong> A slow query in <code>academic-service</code> can exhaust connection pool resources for <code>student-service</code>.
+4. <strong>Independent Scalability &amp; Cloud Deployment:</strong> In production, <code>sms_student_db</code> might be hosted in AWS RDS US-East while <code>sms_academic_db</code> might be scaled on a separate database cluster.</p>
+<h3 id="133-how-this-project-implements-database-independence">13.3 How This Project Implements Database Independence</h3>
+<ol>
+<li>Each service defines its own <code>spring.datasource.url</code> in <code>application.yml</code> targeting a separate database name.</li>
+<li>Entities use standard JPA <code>@Id</code> values (<code>Long studentId</code>, <code>Long parentId</code>, <code>Long examId</code>).</li>
+<li>Cross-service domain joins are replaced with <strong>Client-Side Aggregation</strong> in React.</li>
+</ol>
+<hr />
+<h1 id="step-14-complete-real-request-traces">Step 14 — Complete Real Request Traces</h1>
+<p>Here are 3 complete, line-by-line real request traces through the actual classes of this project:</p>
+<h3 id="trace-1-parent-opens-assessment-marks-tab">Trace 1: Parent Opens Assessment / Marks Tab</h3>
+<p><strong>Goal:</strong> Parent with <code>studentId = 14</code> views assessment grades.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Component</th>
+<th>Class / File</th>
+<th>Method / Route</th>
+<th>Action Performed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Browser / UI</td>
+<td><code>ParentDashboard.jsx</code></td>
+<td><code>setActiveTab('marks')</code></td>
+<td>User selects Marks tab.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Frontend Service</td>
+<td><code>academicService.js</code></td>
+<td><code>getMarksByStudent(14)</code></td>
+<td>Executes <code>api.get('/api/academic/marks/student/14')</code>.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Axios Interceptor</td>
+<td><code>api.js</code></td>
+<td>Request Interceptor</td>
+<td>Appends <code>Authorization: Bearer &lt;token&gt;</code> from <code>localStorage</code>.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Network Call</td>
+<td>Browser Network Engine</td>
+<td><code>GET http://localhost:8080/api/academic/marks/student/14</code></td>
+<td>HTTP request sent to Gateway port <code>8080</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>API Gateway</td>
+<td><code>application.yml</code></td>
+<td>Route Match</td>
+<td>Matches <code>- id: academic-service</code>, <code>Path=/api/academic/**</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Load Balancer</td>
+<td>Spring Cloud Gateway</td>
+<td><code>lb://ACADEMIC-SERVICE</code></td>
+<td>Gateway queries Eureka for <code>ACADEMIC-SERVICE</code>, finds <code>127.0.0.1:8083</code>.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Reverse Proxy</td>
+<td>Netty HTTP Dispatcher</td>
+<td>Forward Request</td>
+<td>Forwards request and <code>Authorization</code> header to <code>127.0.0.1:8083</code>.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Target Controller</td>
+<td><code>AcademicController.java</code></td>
+<td><code>getMarksByStudent(@PathVariable Long studentId)</code></td>
+<td>Endpoint <code>@GetMapping("/marks/student/{studentId}")</code> triggered.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Business Service</td>
+<td><code>AcademicService.java</code></td>
+<td><code>getMarksByStudent(14L)</code></td>
+<td>Executes <code>markRepository.findByStudentId(14L)</code>.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Data Layer</td>
+<td><code>MarkRepository.java</code></td>
+<td>Spring Data JPA query</td>
+<td>Runs <code>SELECT * FROM marks WHERE student_id = 14</code> against <code>sms_academic_db</code>.</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Response Return</td>
+<td><code>AcademicController.java</code></td>
+<td><code>ResponseEntity.ok(ApiResponse.success(marks))</code></td>
+<td>Returns HTTP 200 with JSON payload containing array of marks.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Gateway Relay</td>
+<td>API Gateway</td>
+<td>Reactive Bridge</td>
+<td>Pipes HTTP 200 response back to frontend.</td>
+</tr>
+<tr>
+<td>13</td>
+<td>React State</td>
+<td><code>ParentDashboard.jsx</code></td>
+<td><code>setMarks(mrkRes.value.data)</code></td>
+<td>Updates state and renders grades table in UI.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="trace-2-teacher-submits-student-evaluation-marks">Trace 2: Teacher Submits Student Evaluation Marks</h3>
+<p><strong>Goal:</strong> Teacher enters mark <code>92.5</code> for Student #7 in Exam #2, Subject #3.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Component</th>
+<th>Class / File</th>
+<th>Method / Route</th>
+<th>Action Performed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Browser / UI</td>
+<td><code>TeacherDashboard.jsx</code></td>
+<td><code>handleSubmitMarks()</code></td>
+<td>Teacher clicks "Submit Evaluation Marks".</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Frontend Service</td>
+<td><code>academicService.js</code></td>
+<td><code>submitMarks(payload)</code></td>
+<td>Calls <code>api.post('/api/academic/marks', payload)</code>.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Payload</td>
+<td><code>TeacherDashboard.jsx</code></td>
+<td>JSON Body</td>
+<td><code>{"studentId":7, "examId":2, "subjectId":3, "marksObtained":92.5, "maxMarks":100}</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Axios Interceptor</td>
+<td><code>api.js</code></td>
+<td>Request Interceptor</td>
+<td>Attaches <code>Authorization: Bearer &lt;jwt_teacher&gt;</code> header.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Gateway Routing</td>
+<td><code>application.yml</code></td>
+<td>Predicate Filter</td>
+<td>Matches route <code>academic-service</code> -&gt; <code>lb://ACADEMIC-SERVICE</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Target Controller</td>
+<td><code>AcademicController.java</code></td>
+<td><code>createMark(@RequestBody Mark mark)</code></td>
+<td>Method handles <code>POST /api/academic/marks</code>.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Business Logic</td>
+<td><code>AcademicService.java</code></td>
+<td><code>createMark(Mark mark)</code></td>
+<td>Calculates grade: <code>if (pct &gt;= 90) mark.setGrade("A+");</code>.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Database Write</td>
+<td><code>MarkRepository.java</code></td>
+<td><code>markRepository.save(mark)</code></td>
+<td>Executes SQL <code>INSERT INTO marks ...</code> in <code>sms_academic_db</code>.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Success Response</td>
+<td><code>AcademicController.java</code></td>
+<td><code>ResponseEntity.status(201).body(...)</code></td>
+<td>Returns <code>ApiResponse.success("Mark recorded", created)</code>.</td>
+</tr>
+<tr>
+<td>10</td>
+<td>UI Notification</td>
+<td><code>TeacherDashboard.jsx</code></td>
+<td><code>addToast(..., 'success')</code></td>
+<td>Displays success toast notification on screen.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="trace-3-parent-submits-student-leave-request">Trace 3: Parent Submits Student Leave Request</h3>
+<p><strong>Goal:</strong> Parent submits medical leave for their child without exposing or passing <code>studentId</code> in the request body.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Component</th>
+<th>Class / File</th>
+<th>Method / Route</th>
+<th>Action Performed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Browser / UI</td>
+<td><code>ParentDashboard.jsx</code></td>
+<td><code>handleSubmitLeave()</code></td>
+<td>Parent fills start date, end date, reason and clicks Submit.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Frontend Service</td>
+<td><code>leaveService.js</code></td>
+<td><code>submit(leaveForm)</code></td>
+<td>Calls <code>api.post('/api/attendance/leave', leaveForm)</code>.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Axios Interceptor</td>
+<td><code>api.js</code></td>
+<td>Request Interceptor</td>
+<td>Injects parent JWT token.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>API Gateway</td>
+<td><code>application.yml</code></td>
+<td>Dynamic Route</td>
+<td>Matches <code>/api/attendance/**</code> -&gt; <code>lb://ATTENDANCE-SERVICE</code>.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Gateway Forward</td>
+<td>Netty Client</td>
+<td><code>127.0.0.1:8084</code></td>
+<td>Sends <code>POST /api/attendance/leave</code> to Attendance Service.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Controller Header Inspection</td>
+<td><code>AttendanceController.java</code></td>
+<td><code>submitLeave(...)</code></td>
+<td>Reads <code>request.getHeader("Authorization")</code>.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>JWT Token Extraction</td>
+<td><code>JwtDecoder.java</code></td>
+<td><code>extractRaw(authHeader)</code></td>
+<td>Strips <code>"Bearer "</code> prefix.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Signature Validation</td>
+<td><code>JwtDecoder.java</code></td>
+<td><code>isValidToken(token)</code></td>
+<td>Verifies token HMAC signature with shared secret.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Claim Extraction</td>
+<td><code>JwtDecoder.java</code></td>
+<td><code>getStudentId(token)</code> &amp; <code>getUserId(token)</code></td>
+<td>Extracts <code>studentId = 14</code>, <code>parentId = 3</code> from signed claims!</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Security Assertion</td>
+<td><code>AttendanceController.java</code></td>
+<td>Null validation</td>
+<td>Validates that <code>studentId != null</code> (rejects non-parents).</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Service Call</td>
+<td><code>AttendanceService.java</code></td>
+<td><code>submitLeave(studentId, parentId, req)</code></td>
+<td>Sets <code>status = "PENDING"</code>, links to student 14.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Database Write</td>
+<td><code>LeaveRequestRepository</code></td>
+<td><code>save(leaveRequest)</code></td>
+<td>Inserts into <code>sms_attendance_db.leave_requests</code>.</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Response</td>
+<td><code>AttendanceController.java</code></td>
+<td><code>ResponseEntity.status(201)...</code></td>
+<td>Returns HTTP 201 Created to frontend.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="step-15-core-code-snippets-line-by-line-breakdown">Step 15 — Core Code Snippets &amp; Line-by-Line Breakdown</h1>
+<h3 id="151-api-gateway-dynamic-route-definition">15.1 API Gateway Dynamic Route Definition</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Location: api-gateway/src/main/resources/application.yml</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">student-service</span>
+<span class="w">  </span><span class="nt">uri</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">lb://STUDENT-SERVICE</span>
+<span class="w">  </span><span class="nt">predicates</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Path=/api/students/**</span>
+</code></pre></div>
+
+<ul>
+<li><code>- id: student-service</code>: Unique identifier for this route within Spring Cloud Gateway.</li>
+<li><code>uri: lb://STUDENT-SERVICE</code>: Instructs Spring Cloud LoadBalancer to look up <code>STUDENT-SERVICE</code> in Eureka and distribute traffic across available instances.</li>
+<li><code>predicates: - Path=/api/students/**</code>: Any incoming HTTP request starting with <code>/api/students/</code> will be handled by this route.</li>
+</ul>
+<h3 id="152-eureka-instance-registration">15.2 Eureka Instance Registration</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1"># Location: student-service/src/main/resources/application.yml</span>
+<span class="nt">eureka</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">client</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">service-url</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">defaultZone</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:8761/eureka/</span>
+<span class="w">  </span><span class="nt">instance</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">prefer-ip-address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">ip-address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1</span>
+<span class="w">    </span><span class="nt">lease-renewal-interval-in-seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+</code></pre></div>
+
+<ul>
+<li><code>defaultZone</code>: Points to the Eureka registry server.</li>
+<li><code>prefer-ip-address: true</code> &amp; <code>ip-address: 127.0.0.1</code>: Explicitly binds registration to the local loopback interface, eliminating IP mismatch errors on multi-homed or VPN machines.</li>
+<li><code>lease-renewal-interval-in-seconds: 5</code>: Sends heartbeat every 5 seconds.</li>
+</ul>
+<h3 id="153-axios-centralized-request-interceptor">15.3 Axios Centralized Request Interceptor</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Location: school-frontend/src/services/api.js</span>
+<span class="nx">api</span><span class="p">.</span><span class="nx">interceptors</span><span class="p">.</span><span class="nx">request</span><span class="p">.</span><span class="nx">use</span><span class="p">(</span>
+<span class="w">  </span><span class="p">(</span><span class="nx">config</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="s1">&#39;token&#39;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">config</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s1">&#39;Authorization&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sb">`Bearer </span><span class="si">${</span><span class="nx">token</span><span class="si">}</span><span class="sb">`</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">config</span><span class="p">;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nb">Promise</span><span class="p">.</span><span class="nx">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>Intercepts every outgoing HTTP call initiated by <code>api.get()</code> or <code>api.post()</code>.</li>
+<li>Fetches the current JWT from browser storage (<code>localStorage</code>).</li>
+<li>Inserts <code>Authorization: Bearer &lt;token&gt;</code> header so backend microservices can verify identity.</li>
+</ul>
+<h3 id="154-stateless-token-decoding-in-downstream-services">15.4 Stateless Token Decoding in Downstream Services</h3>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Location: student-service/src/main/java/com/school/student/security/JwtDecoder.java</span>
+<span class="kd">public</span><span class="w"> </span><span class="n">Long</span><span class="w"> </span><span class="nf">getStudentId</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Claims</span><span class="w"> </span><span class="n">claims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Jwts</span><span class="p">.</span><span class="na">parserBuilder</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="na">setSigningKey</span><span class="p">(</span><span class="n">getSigningKey</span><span class="p">()).</span><span class="na">build</span><span class="p">()</span>
+<span class="w">            </span><span class="p">.</span><span class="na">parseClaimsJws</span><span class="p">(</span><span class="n">token</span><span class="p">).</span><span class="na">getBody</span><span class="p">();</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">claims</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="s">&quot;studentId&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="p">.</span><span class="na">class</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><code>Jwts.parserBuilder().setSigningKey(...)</code>: Reconstructs parser with the shared 256-bit secret key.</li>
+<li><code>.parseClaimsJws(token)</code>: Validates signature and expiration date. Throws <code>JwtException</code> if tampered with.</li>
+<li><code>claims.get("studentId", Long.class)</code>: Directly extracts the student identifier embedded by <code>auth-service</code>.</li>
+</ul>
+<hr />
+<h1 id="step-16-communication-methods-comparison-table">Step 16 — Communication Methods Comparison Table</h1>
+<table>
+<thead>
+<tr>
+<th>Communication Method</th>
+<th>Used in This Project?</th>
+<th>Role / Implementation in Current Project</th>
+<th>Industry Pros</th>
+<th>Industry Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Spring Cloud Gateway</strong></td>
+<td><strong>YES</strong></td>
+<td>Entry reverse-proxy on port <code>8080</code>; handles CORS preflight and dynamic <code>lb://</code> routing.</td>
+<td>Centralized entry point, hides backend topologies, manages CORS.</td>
+<td>Single point of failure if not clustered.</td>
+</tr>
+<tr>
+<td><strong>Netflix Eureka</strong></td>
+<td><strong>YES</strong></td>
+<td>Service registry on port <code>8761</code>; tracks microservice instances via heartbeats on <code>127.0.0.1</code>.</td>
+<td>Automatic IP/port discovery, dynamic scaling, zero hardcoded endpoints.</td>
+<td>Eventual consistency lag during fast restarts.</td>
+</tr>
+<tr>
+<td><strong>Axios HTTP Client</strong></td>
+<td><strong>YES</strong></td>
+<td>React frontend client with base URL <code>http://localhost:8080</code> and token interceptor.</td>
+<td>Easy interceptors, automatic JSON transformation, browser standard.</td>
+<td>Limited to browser runtime.</td>
+</tr>
+<tr>
+<td><strong>OpenFeign</strong></td>
+<td><strong>NO</strong></td>
+<td><em>Not currently used in this project.</em></td>
+<td>Declarative Java HTTP client, integrates with Ribbon/LoadBalancer.</td>
+<td>Adds interface overhead; unnecessary when services are decoupled.</td>
+</tr>
+<tr>
+<td><strong>RestClient</strong></td>
+<td><strong>NO</strong></td>
+<td><em>Not currently used in this project.</em></td>
+<td>Synchronous fluent HTTP client in Spring Boot 3.</td>
+<td>Still creates synchronous coupling between backends.</td>
+</tr>
+<tr>
+<td><strong>WebClient</strong></td>
+<td><strong>NO</strong> <em>(Business)</em></td>
+<td>Internal to <code>api-gateway</code> reactive stack, but not in business logic.</td>
+<td>Non-blocking, reactive, handles high concurrent throughput.</td>
+<td>Reactive programming complexity (Mono/Flux).</td>
+</tr>
+<tr>
+<td><strong>RestTemplate</strong></td>
+<td><strong>NO</strong></td>
+<td><em>Not currently used in this project.</em></td>
+<td>Simple classic Spring HTTP client.</td>
+<td>Maintenance mode in Spring 6 in favor of RestClient.</td>
+</tr>
+<tr>
+<td><strong>Apache Kafka / RabbitMQ</strong></td>
+<td><strong>NO</strong></td>
+<td><em>Not currently used in this project.</em></td>
+<td>High throughput asynchronous event streaming, total decoupling.</td>
+<td>Requires ZooKeeper/KRaft broker setup, heavy memory footprint.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="step-17-synchronous-vs-asynchronous-communication">Step 17 — Synchronous vs. Asynchronous Communication</h1>
+<h3 id="171-how-synchronous-communication-works-this-projects-architecture">17.1 How Synchronous Communication Works (This Project's Architecture)</h3>
+<div class="codehilite"><pre><span></span><code><span class="nv">Frontend</span><span class="w"> </span>──<span class="ss">(</span><span class="nv">HTTP</span><span class="w"> </span><span class="nv">Request</span><span class="ss">)</span>──<span class="o">&gt;</span><span class="w"> </span><span class="nv">Gateway</span><span class="w"> </span>──<span class="ss">(</span><span class="nv">HTTP</span><span class="w"> </span><span class="nv">Request</span><span class="ss">)</span>──<span class="o">&gt;</span><span class="w"> </span><span class="nv">Microservice</span><span class="w"> </span>──<span class="o">&gt;</span><span class="w"> </span><span class="nv">Database</span>
+<span class="w">   </span>│<span class="w">                                                                           </span>│
+<span class="w">   </span>└───────────────<span class="o">&lt;</span><span class="w"> </span><span class="nv">waits</span><span class="w"> </span><span class="nv">synchronously</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="nv">JSON</span><span class="w"> </span><span class="nv">response</span><span class="w"> </span><span class="o">&lt;</span>───────────────────┘
+</code></pre></div>
+
+<ul>
+<li><strong>Nature:</strong> Request / Response.</li>
+<li><strong>Protocol:</strong> HTTP 1.1 / REST JSON.</li>
+<li><strong>Characteristics:</strong> The calling client sends an HTTP request and blocks or waits until the server completes processing and returns an HTTP status code (200, 201, 400, etc.).</li>
+<li><strong>Why this project uses it:</strong> Simple to debug, straightforward to understand, aligns with CRUD web applications, zero extra infrastructure required.</li>
+</ul>
+<h3 id="172-how-asynchronous-communication-works-not-implemented">17.2 How Asynchronous Communication Works (Not Implemented)</h3>
+<div class="codehilite"><pre><span></span><code>Service A ──(Publishes Event)──&gt; Message Broker (Kafka / RabbitMQ)
+                                       │
+                                       ├──&gt; Service B receives event asynchronously
+                                       └──&gt; Service C receives event asynchronously
+</code></pre></div>
+
+<ul>
+<li><strong>Status in this project:</strong> <strong>Not currently implemented.</strong></li>
+<li>In an asynchronous architecture, Service A emits an event (e.g. <code>StudentEnrolledEvent</code>) onto a message broker topic and returns immediately without waiting for Service B or Service C to process it.</li>
+</ul>
+<hr />
+<h1 id="step-18-failure-scenarios-resilience-audit">Step 18 — Failure Scenarios &amp; Resilience Audit</h1>
+<table>
+<thead>
+<tr>
+<th>Failure Scenario</th>
+<th>Current Implemented Behavior</th>
+<th>Recommended Production Improvement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Eureka Server Goes Down</strong></td>
+<td>Microservices and Gateway continue functioning using their locally cached registry entries for a short time. However, new service instances cannot register, and dead instances are not evicted.</td>
+<td>Deploy Eureka in High Availability (HA) mode with peer-to-peer replica clusters.</td>
+</tr>
+<tr>
+<td><strong>API Gateway Goes Down</strong></td>
+<td>React frontend receives <code>Network Error</code> (ERR_CONNECTION_REFUSED) on all <code>/api/**</code> calls. Frontend redirects to login or displays error toasts.</td>
+<td>Run multiple Gateway instances behind an infrastructure load balancer (like NGINX, AWS ALB, or HAProxy).</td>
+</tr>
+<tr>
+<td><strong>Student Service Goes Down</strong></td>
+<td>Gateway returns <code>500 Server Error</code> or <code>503 Service Unavailable</code>. In <code>ParentDashboard</code>, <code>Promise.allSettled()</code> prevents total crash: other widgets (Holidays, Fees) still load, but Child Profile displays an error.</td>
+<td>Implement <strong>Resilience4j Circuit Breaker</strong> and Fallback in Gateway or frontend to serve cached profiles.</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL Database Goes Down</strong></td>
+<td>Spring Boot throws <code>CannotCreateTransactionException</code> / HikariCP connection timeout. Global exception handler returns HTTP 500 error response.</td>
+<td>Configure database read-replicas, connection pool health monitoring, and automatic RDS failover.</td>
+</tr>
+<tr>
+<td><strong>JWT is Expired (&gt; 24 Hours)</strong></td>
+<td>Downstream <code>JwtDecoder</code> or <code>JwtAuthFilter</code> throws <code>ExpiredJwtException</code>. Returns HTTP 401 Unauthorized. Axios response interceptor intercepts 401, clears localStorage, and redirects to <code>/login</code>.</td>
+<td>Implement <strong>Refresh Token Rotation</strong> (short-lived access tokens of 15m + long-lived secure HttpOnly refresh tokens).</td>
+</tr>
+<tr>
+<td><strong>Parent Accesses Another Student's Data</strong></td>
+<td><code>StudentController</code> checks <code>parentId.equals(callerUserId)</code>. If mismatch, returns HTTP 403 Forbidden. In <code>AttendanceController</code>, <code>studentId</code> is read exclusively from JWT claims, making tampering impossible.</td>
+<td>Current implementation is secure. Audit logging can be added to flag suspicious requests.</td>
+</tr>
+<tr>
+<td><strong>Gateway Request Times Out</strong></td>
+<td>Gateway has <code>connect-timeout: 3000ms</code> and <code>response-timeout: 10s</code>. If a microservice hangs, Gateway returns HTTP 504 Gateway Timeout after 10 seconds.</td>
+<td>Implement per-route timeouts and graceful fallback degradation using Resilience4j.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h1 id="step-19-top-10-beginner-microservices-mistakes">Step 19 — Top 10 Beginner Microservices Mistakes</h1>
+<h3 id="1-direct-cross-service-database-access">1. Direct Cross-Service Database Access</h3>
+<ul>
+<li><strong>The Mistake:</strong> Connecting <code>fee-service</code> directly to <code>sms_student_db</code> to read student names.</li>
+<li><strong>Why it happens:</strong> Beginners want to write simple SQL <code>JOIN</code> queries.</li>
+<li><strong>The Remedy:</strong> Maintain private databases. Have the frontend aggregate data or pass necessary IDs via APIs.</li>
+</ul>
+<h3 id="2-hardcoding-localhost-urls-in-the-frontend">2. Hardcoding Localhost URLs in the Frontend</h3>
+<ul>
+<li><strong>The Mistake:</strong> Writing <code>axios.get("http://localhost:8082/api/students")</code> inside a React component.</li>
+<li><strong>Why it happens:</strong> The developer wants quick tests during local development.</li>
+<li><strong>The Remedy:</strong> Always target the API Gateway (<code>http://localhost:8080/api/students</code>).</li>
+</ul>
+<h3 id="3-forgetting-eureka-loopback-binding-127001">3. Forgetting Eureka Loopback Binding (<code>127.0.0.1</code>)</h3>
+<ul>
+<li><strong>The Mistake:</strong> Leaving <code>prefer-ip-address: false</code> on Windows machines with virtual adapters or WiFi.</li>
+<li><strong>Why it happens:</strong> Eureka registers a non-routable host IP (e.g. <code>192.168.x.x</code> or <code>172.x.x.x</code>), causing Gateway forwarding to time out.</li>
+<li><strong>The Remedy:</strong> Explicitly configure <code>prefer-ip-address: true</code> and <code>ip-address: 127.0.0.1</code> in all microservice YAML files.</li>
+</ul>
+<h3 id="4-case-sensitivity-in-service-names">4. Case Sensitivity in Service Names</h3>
+<ul>
+<li><strong>The Mistake:</strong> Writing <code>uri: lb://student-service</code> in Gateway while the service registers as <code>STUDENT-SERVICE</code>.</li>
+<li><strong>Why it happens:</strong> In Spring Cloud Gateway, Eureka VIP matching is case-sensitive unless <code>lower-case-service-id: true</code> is configured.</li>
+<li><strong>The Remedy:</strong> Keep service names consistently uppercase (e.g. <code>STUDENT-SERVICE</code>) and enable <code>lower-case-service-id: true</code>.</li>
+</ul>
+<h3 id="5-missing-cors-configuration-on-the-api-gateway">5. Missing CORS Configuration on the API Gateway</h3>
+<ul>
+<li><strong>The Mistake:</strong> React throws: <em>"CORS header 'Access-Control-Allow-Origin' missing"</em>.</li>
+<li><strong>Why it happens:</strong> Modern browsers block cross-origin requests when frontend port (<code>5173</code>) differs from backend port (<code>8080</code>).</li>
+<li><strong>The Remedy:</strong> Implement a reactive <code>CorsWebFilter</code> in <code>api-gateway</code> that permits required localhost origins.</li>
+</ul>
+<h3 id="6-missing-the-authorization-header-in-service-calls">6. Missing the <code>Authorization</code> Header in Service Calls</h3>
+<ul>
+<li><strong>The Mistake:</strong> A request succeeds in Postman without headers, but fails in the React application.</li>
+<li><strong>Why it happens:</strong> The frontend developer forgot to configure an Axios request interceptor to inject <code>Bearer &lt;token&gt;</code>.</li>
+<li><strong>The Remedy:</strong> Centralize Axios configuration in <code>api.js</code> and attach the token automatically on every outgoing request.</li>
+</ul>
+<h3 id="7-over-engineering-microservices-with-unnecessary-tools">7. Over-Engineering Microservices with Unnecessary Tools</h3>
+<ul>
+<li><strong>The Mistake:</strong> Adding Kafka, Redis, Zipkin, Config Server, and Feign to a small 5-service school project before needing them.</li>
+<li><strong>Why it happens:</strong> Copying enterprise templates without evaluating real project requirements.</li>
+<li><strong>The Remedy:</strong> Keep architecture clean and simple. Solve immediate requirements first with robust REST APIs.</li>
+</ul>
+<h3 id="8-exposing-internal-microservice-ports-to-the-public">8. Exposing Internal Microservice Ports to the Public</h3>
+<ul>
+<li><strong>The Mistake:</strong> Opening ports <code>8081</code>–<code>8085</code> to the public internet.</li>
+<li><strong>Why it happens:</strong> Lack of firewall or network security boundaries.</li>
+<li><strong>The Remedy:</strong> In production, place microservices inside a private Virtual Private Cloud (VPC) subnet; only expose Gateway port <code>80</code> / <code>443</code>.</li>
+</ul>
+<h3 id="9-lack-of-request-timeouts">9. Lack of Request Timeouts</h3>
+<ul>
+<li><strong>The Mistake:</strong> A slow SQL query in one service causes the Gateway connection pool to hang forever.</li>
+<li><strong>Why it happens:</strong> Default HTTP clients wait indefinitely without timeout parameters.</li>
+<li><strong>The Remedy:</strong> Configure <code>connect-timeout</code> (e.g. 3000ms) and <code>response-timeout</code> (e.g. 10s) in the Gateway configuration.</li>
+</ul>
+<h3 id="10-cyclic-dependencies">10. Cyclic Dependencies</h3>
+<ul>
+<li><strong>The Mistake:</strong> Service A calls Service B, which calls Service C, which calls Service A.</li>
+<li><strong>Why it happens:</strong> Poor domain boundary definitions.</li>
+<li><strong>The Remedy:</strong> Follow unidirectional data flows and rely on event publication or frontend aggregation.</li>
+</ul>
+<hr />
+<h1 id="step-20-microservices-technical-interview-preparation">Step 20 — Microservices Technical Interview Preparation</h1>
+<h3 id="beginner-questions-answers">Beginner Questions &amp; Answers</h3>
+<h4 id="q1-what-is-a-microservice">Q1: What is a microservice?</h4>
+<p><strong>Answer:</strong> A microservice is an architectural approach where an application is composed of small, independent services that communicate over lightweight protocols (such as HTTP REST). Each service focuses on a single business domain (e.g., student management, billing) and maintains its own private database.</p>
+<h4 id="q2-what-is-the-role-of-netflix-eureka-in-this-project">Q2: What is the role of Netflix Eureka in this project?</h4>
+<p><strong>Answer:</strong> Eureka acts as the Service Registry and Discovery server. Instead of hardcoding microservice IP addresses and ports inside the API Gateway, every microservice registers its address with Eureka at startup. The API Gateway queries Eureka dynamically to route incoming client traffic to the appropriate service instance.</p>
+<h4 id="q3-what-is-an-api-gateway-and-why-is-it-needed">Q3: What is an API Gateway and why is it needed?</h4>
+<p><strong>Answer:</strong> The API Gateway (running on port <code>8080</code>) is the single entry point for all frontend requests. It provides reverse proxy routing, load balancing, CORS preflight handling, and security filtering. It ensures the frontend does not need to know individual service ports.</p>
+<h4 id="q4-how-does-service-discovery-work-when-a-request-arrives-at-the-gateway">Q4: How does service discovery work when a request arrives at the Gateway?</h4>
+<p><strong>Answer:</strong> When React requests <code>http://localhost:8080/api/students</code>, the Gateway matches the route predicate <code>Path=/api/students/**</code>. The route URI is <code>lb://STUDENT-SERVICE</code>. The Gateway queries Eureka's registry table for <code>STUDENT-SERVICE</code>, retrieves its active address (<code>127.0.0.1:8082</code>), and dispatches the request.</p>
+<h4 id="q5-what-is-openfeign-is-it-used-in-this-project">Q5: What is OpenFeign? Is it used in this project?</h4>
+<p><strong>Answer:</strong> OpenFeign is a declarative HTTP client library from Spring Cloud that simplifies calling other REST services using annotated Java interfaces. <strong>It is not currently used in this project</strong> because this system avoids direct backend-to-backend HTTP calls, utilizing frontend aggregation and stateless JWT claims instead.</p>
+<h4 id="q6-why-should-microservices-not-share-a-database">Q6: Why should microservices NOT share a database?</h4>
+<p><strong>Answer:</strong> Sharing databases creates tight coupling. If one service modifies a table schema, other services break. It also violates domain boundaries, bypasses service business validation rules, and causes database connection contention.</p>
+<h4 id="q7-how-does-jwt-authentication-work-across-multiple-services-in-this-system">Q7: How does JWT authentication work across multiple services in this system?</h4>
+<p><strong>Answer:</strong> Authentication is stateless. When a user logs in, <code>auth-service</code> generates a JWT containing the user's ID, role, and linked student ID, signed with an HMAC-SHA256 secret key. Other microservices share the same secret key and decode the token locally using <code>JwtDecoder</code>, eliminating the need to query <code>auth-service</code> over the network.</p>
+<h4 id="q8-what-is-the-difference-between-client-side-load-balancing-and-server-side-load-balancing">Q8: What is the difference between client-side load balancing and server-side load balancing?</h4>
+<p><strong>Answer:</strong> In server-side load balancing (e.g. NGINX or AWS ALB), the client sends traffic to a physical proxy that chooses the destination server. In client-side load balancing (used by Spring Cloud Gateway via <code>lb://</code>), the client/gateway fetches the list of available servers from Eureka and selects the destination server directly.</p>
+<hr />
+<h3 id="intermediate-questions-answers">Intermediate Questions &amp; Answers</h3>
+<h4 id="q9-explain-the-end-to-end-request-lifecycle-when-a-parent-views-their-childs-attendance">Q9: Explain the end-to-end request lifecycle when a parent views their child's attendance.</h4>
+<p><strong>Answer:</strong>
+1. Parent logs in; React stores JWT containing <code>studentId: 14</code>.
+2. React <code>ParentDashboard.jsx</code> invokes <code>attendanceService.getAttendanceByStudent(14)</code>.
+3. Axios interceptor attaches <code>Authorization: Bearer &lt;token&gt;</code> and sends <code>GET http://localhost:8080/api/attendance/student/14</code>.
+4. API Gateway matches <code>/api/attendance/**</code>, queries Eureka for <code>ATTENDANCE-SERVICE</code>, and routes to <code>127.0.0.1:8084</code>.
+5. <code>AttendanceController.getAttendanceByStudent()</code> delegates to <code>AttendanceService</code>.
+6. <code>AttendanceRepository</code> queries <code>sms_attendance_db</code> table <code>attendances</code> where <code>student_id = 14</code>.
+7. The database records are mapped to DTOs and returned as JSON through the Gateway to React.</p>
+<h4 id="q10-how-does-this-project-prevent-a-parent-from-submitting-a-leave-request-for-a-different-student">Q10: How does this project prevent a parent from submitting a leave request for a different student?</h4>
+<p><strong>Answer:</strong> In <code>AttendanceController.java</code> (<code>submitLeave</code>), the backend does not trust any <code>studentId</code> passed in the HTTP request body. Instead, it extracts the Authorization header, decrypts/validates the JWT using <code>JwtDecoder</code>, and extracts <code>studentId</code> directly from the cryptographically signed JWT claims. Since the client cannot forge the signature without the secret key, ownership is strictly enforced.</p>
+<h4 id="q11-what-happens-if-the-eureka-server-crashes-while-the-system-is-running">Q11: What happens if the Eureka server crashes while the system is running?</h4>
+<p><strong>Answer:</strong> Because Spring Cloud Gateway and the microservices cache the Eureka registry locally, existing services can continue communicating through the Gateway for a short grace period. However, new instances cannot register, killed services will not be evicted, and a full system reboot will fail until Eureka is restored.</p>
+<h4 id="q12-why-did-we-configure-prefer-ip-address-true-and-ip-address-127001">Q12: Why did we configure <code>prefer-ip-address: true</code> and <code>ip-address: 127.0.0.1</code>?</h4>
+<p><strong>Answer:</strong> By default, Eureka attempts to resolve the hostname or primary network interface IP. On developer machines with active VPNs, Docker adapters, or dynamic Wi-Fi IPs, Eureka can register an unreachable IP. Explicitly configuring <code>127.0.0.1</code> ensures the API Gateway consistently connects to local loopback ports.</p>
+<h4 id="q13-how-does-the-system-handle-cors-between-react-5173-and-the-gateway-8080">Q13: How does the system handle CORS between React (:5173) and the Gateway (:8080)?</h4>
+<p><strong>Answer:</strong> In <code>api-gateway</code>, a <code>CorsWebFilter</code> bean is configured using <code>UrlBasedCorsConfigurationSource</code>. It intercepts browser <code>OPTIONS</code> preflight requests, approves origins matching <code>http://localhost:*</code> and <code>http://127.0.0.1:*</code>, allows HTTP methods (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, etc.), and permits the <code>Authorization</code> header with <code>allowCredentials(true)</code>.</p>
+<h4 id="q14-what-is-the-difference-between-synchronous-rest-and-asynchronous-event-driven-messaging">Q14: What is the difference between synchronous REST and asynchronous event-driven messaging?</h4>
+<p><strong>Answer:</strong> Synchronous REST requires the caller to wait for the callee to finish and respond over an open HTTP socket. Asynchronous messaging (using Kafka or RabbitMQ) publishes an immutable event message to a queue or topic; consumers read and process the event independently without blocking the publisher.</p>
+<h4 id="q15-how-are-payments-linked-to-fee-invoices-in-fee-service">Q15: How are payments linked to fee invoices in <code>fee-service</code>?</h4>
+<p><strong>Answer:</strong> <code>Fee</code> and <code>Payment</code> entities reside in the same database (<code>sms_fee_db</code>). When <code>POST /api/fees/{feeId}/payments</code> is called, <code>FeeService.recordPayment()</code> creates a <code>Payment</code> entity with <code>feeId</code>, increments <code>paidAmount</code> on the parent <code>Fee</code>, decrements <code>pendingAmount</code>, and updates <code>status</code> to <code>PAID</code> or <code>PARTIAL</code> within a single <code>@Transactional</code> database operation.</p>
+<h4 id="q16-why-doesnt-academic-service-have-a-spring-security-dependency">Q16: Why doesn't <code>academic-service</code> have a Spring Security dependency?</h4>
+<p><strong>Answer:</strong> <code>academic-service</code> relies on perimeter security managed by the API Gateway and stateless token validation where required. By omitting heavy Spring Security filters in internal services that only process sanitized Gateway traffic, application startup time and runtime overhead are minimized.</p>
+<h4 id="q17-how-does-the-teacher-gradebook-interact-with-student-records-across-service-boundaries">Q17: How does the Teacher Gradebook interact with Student records across service boundaries?</h4>
+<p><strong>Answer:</strong> The teacher frontend fetches the student roster from <code>student-service</code> (<code>GET /api/students</code>) and the exams list from <code>academic-service</code> (<code>GET /api/academic/exams</code>). When the teacher enters grades, the frontend submits records containing <code>studentId</code>, <code>examId</code>, and <code>marksObtained</code> to <code>academic-service</code> (<code>POST /api/academic/marks</code>). The boundary is maintained through plain ID references.</p>
+<h4 id="q18-what-production-improvements-would-you-introduce-to-this-architecture">Q18: What production improvements would you introduce to this architecture?</h4>
+<p><strong>Answer:</strong>
+1. <strong>Resilience4j Circuit Breakers:</strong> Protect the API Gateway from cascading failures when a microservice is unresponsive.
+2. <strong>Centralized Configuration:</strong> Spring Cloud Config Server backed by Git for dynamic configuration updates.
+3. <strong>Distributed Tracing:</strong> Micrometer Tracing with Zipkin to trace requests across microservices.
+4. <strong>Secret Management:</strong> Move JWT secrets and database credentials to HashiCorp Vault or AWS Secrets Manager.
+5. <strong>Asynchronous Messaging:</strong> Introduce Kafka or RabbitMQ for non-critical side effects (e.g. sending fee payment SMS receipts).</p>
+<hr />
+<h1 id="step-21-10-day-structured-learning-sequence">Step 21 — 10-Day Structured Learning Sequence</h1>
+<p>To master this architecture step by step, follow this structured 10-day roadmap:</p>
+<h3 id="day-1-microservices-fundamentals-workspace-orientation">Day 1: Microservices Fundamentals &amp; Workspace Orientation</h3>
+<ul>
+<li><strong>Study Goal:</strong> Understand why this project is divided into microservices and how each service has its own database.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>school-management/pom.xml</code> (Review multi-module Maven layout).</li>
+<li><code>school-common/src/main/java/com/school/common/dto/ApiResponse.java</code>.</li>
+<li><strong>Hands-on Task:</strong> Check PostgreSQL to see the 5 separate databases (<code>sms_auth_db</code>, <code>sms_student_db</code>, <code>sms_academic_db</code>, <code>sms_attendance_db</code>, <code>sms_fee_db</code>).</li>
+</ul>
+<h3 id="day-2-service-registry-eureka">Day 2: Service Registry &amp; Eureka</h3>
+<ul>
+<li><strong>Study Goal:</strong> Learn how microservices register and discover each other.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>service-registry/src/main/resources/application.yml</code>.</li>
+<li><code>service-registry/src/main/java/com/school/registry/ServiceRegistryApplication.java</code>.</li>
+<li><code>student-service/src/main/resources/application.yml</code> (Eureka client block).</li>
+<li><strong>Hands-on Task:</strong> Open <code>http://localhost:8761</code> in your browser. Inspect the Eureka dashboard and verify that all 6 microservices display status <code>UP (1) - 127.0.0.1:&lt;port&gt;</code>.</li>
+</ul>
+<h3 id="day-3-spring-cloud-api-gateway-routing">Day 3: Spring Cloud API Gateway &amp; Routing</h3>
+<ul>
+<li><strong>Study Goal:</strong> Master reverse proxy routing, load balancer URIs (<code>lb://</code>), and CORS.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>api-gateway/src/main/resources/application.yml</code>.</li>
+<li><code>api-gateway/src/main/java/com/school/gateway/config/CorsConfig.java</code>.</li>
+<li><strong>Hands-on Task:</strong> Execute in PowerShell:
+  <code>powershell
+  Invoke-RestMethod -Uri "http://localhost:8080/actuator/gateway/routes"</code>
+  Inspect the registered dynamic route predicates.</li>
+</ul>
+<h3 id="day-4-distributed-jwt-authentication-security">Day 4: Distributed JWT Authentication &amp; Security</h3>
+<ul>
+<li><strong>Study Goal:</strong> Understand token creation, signing, claims, and stateless verification.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>auth-service/src/main/java/com/school/auth/security/JwtUtil.java</code>.</li>
+<li><code>auth-service/src/main/java/com/school/auth/controller/AuthController.java</code>.</li>
+<li><code>student-service/src/main/java/com/school/student/security/JwtDecoder.java</code>.</li>
+<li><strong>Hands-on Task:</strong> Log in via Postman or PowerShell:
+  <code>powershell
+  $body = @{ email = "admin@school.com"; password = "admin" } | ConvertTo-Json
+  Invoke-RestMethod -Uri "http://localhost:8080/api/auth/login" -Method Post -Body $body -ContentType "application/json"</code>
+  Copy the token and paste it into <a href="https://jwt.io">jwt.io</a> to inspect the payload claims (<code>userId</code>, <code>role</code>, <code>email</code>).</li>
+</ul>
+<h3 id="day-5-axios-interceptors-react-gateway-integration">Day 5: Axios Interceptors &amp; React Gateway Integration</h3>
+<ul>
+<li><strong>Study Goal:</strong> Trace how the frontend dispatches authenticated calls to port <code>8080</code>.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>school-frontend/src/services/api.js</code>.</li>
+<li><code>school-frontend/src/services/studentService.js</code>.</li>
+<li><strong>Hands-on Task:</strong> Open browser Developer Tools (F12) -&gt; <strong>Network Tab</strong>. Click any menu in the application. Inspect the request URL (<code>http://localhost:8080/...</code>) and verify the <code>Authorization: Bearer</code> header.</li>
+</ul>
+<h3 id="day-6-parent-student-relationship-ownership-security">Day 6: Parent → Student Relationship &amp; Ownership Security</h3>
+<ul>
+<li><strong>Study Goal:</strong> Understand cross-service entity references and token claim extraction.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>auth-service/src/main/java/com/school/auth/entity/User.java</code> (Notice <code>studentId</code>).</li>
+<li><code>student-service/src/main/java/com/school/student/controller/StudentController.java</code> (<code>getStudentsByParent</code>).</li>
+<li><code>attendance-service/src/main/java/com/school/attendance/controller/AttendanceController.java</code> (<code>submitLeave</code>).</li>
+<li><strong>Hands-on Task:</strong> Trace how <code>submitLeave()</code> extracts <code>studentId</code> directly from the token without accepting it from the request body.</li>
+</ul>
+<h3 id="day-7-teacher-command-center-academic-assessment-flow">Day 7: Teacher Command Center &amp; Academic Assessment Flow</h3>
+<ul>
+<li><strong>Study Goal:</strong> Learn how the Teacher dashboard aggregates data from multiple microservices.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>school-frontend/src/pages/teacher/TeacherDashboard.jsx</code>.</li>
+<li><code>academic-service/src/main/java/com/school/academic/controller/AcademicController.java</code>.</li>
+<li><code>academic-service/src/main/java/com/school/academic/service/AcademicService.java</code>.</li>
+<li><strong>Hands-on Task:</strong> Enter marks for a student in the Teacher portal. Verify the record in PostgreSQL:
+  <code>sql
+  SELECT * FROM marks ORDER BY id DESC LIMIT 5;</code></li>
+</ul>
+<h3 id="day-8-fee-payment-transaction-processing">Day 8: Fee &amp; Payment Transaction Processing</h3>
+<ul>
+<li><strong>Study Goal:</strong> Understand transactional ledger updates within a dedicated microservice.</li>
+<li><strong>Files to Open:</strong></li>
+<li><code>fee-service/src/main/java/com/school/fee/entity/Fee.java</code>.</li>
+<li><code>fee-service/src/main/java/com/school/fee/entity/Payment.java</code>.</li>
+<li><code>fee-service/src/main/java/com/school/fee/service/FeeService.java</code>.</li>
+<li><code>school-frontend/src/pages/admin/FeesPage.jsx</code>.</li>
+<li><strong>Hands-on Task:</strong> Record a partial fee payment and observe how <code>paidAmount</code>, <code>pendingAmount</code>, and <code>status</code> update automatically.</li>
+</ul>
+<h3 id="day-9-failure-analysis-resilience">Day 9: Failure Analysis &amp; Resilience</h3>
+<ul>
+<li><strong>Study Goal:</strong> Understand how microservices react when individual components fail.</li>
+<li><strong>Hands-on Task:</strong></li>
+<li>Kill <code>attendance-service</code>.</li>
+<li>Open the React frontend.</li>
+<li>Notice that Student management and Fees still work! Only Attendance displays an error.</li>
+<li>Restart <code>attendance-service</code> and watch it re-register with Eureka within 10 seconds.</li>
+</ul>
+<h3 id="day-10-mock-technical-interview-architecture-defense">Day 10: Mock Technical Interview &amp; Architecture Defense</h3>
+<ul>
+<li><strong>Study Goal:</strong> Practice explaining this project's architecture aloud using the questions in Step 20.</li>
+<li><strong>Review:</strong></li>
+<li>Explain why you chose client-side aggregation over OpenFeign.</li>
+<li>Explain why databases are private.</li>
+<li>Explain how Eureka and Gateway collaborate using <code>lb://</code>.</li>
+</ul>
+<hr />
+<h1 id="step-22-verification-audit-summary">Step 22 — Verification &amp; Audit Summary</h1>
+<h3 id="221-final-verification-checklist">22.1 Final Verification Checklist</h3>
+<ul>
+<li>[x] <strong>Zero Code Changes:</strong> No existing Java classes, configuration files, POM files, or React components were modified or refactored.</li>
+<li>[x] <strong>Accurate Technology Report:</strong> Explicitly identified that OpenFeign, RestClient, Kafka, and direct backend-to-backend REST calls are <strong>not currently used</strong> in this project.</li>
+<li>[x] <strong>Real Class &amp; Endpoint Traces:</strong> Used verified file paths, class names, method names, and routes from the workspace.</li>
+<li>[x] <strong>Architecture Ground Truth:</strong> Clearly articulated the Client-Side Aggregation + Stateless JWT Claim Propagation model.</li>
+</ul>
+<h3 id="222-architectural-summary">22.2 Architectural Summary</h3>
+<p>The School Management System implements a <strong>lightweight, practical, and maintainable microservices architecture</strong> that balances enterprise decoupling with development simplicity. By delegating routing and CORS to Spring Cloud Gateway, discovery to Netflix Eureka, identity claims to signed JWTs, and view composition to the React frontend, the system avoids the overhead of distributed network calls while retaining all key benefits of independent service deployment and database isolation.</p>
+</body>
+</html>
