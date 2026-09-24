@@ -1,16 +1,18 @@
 package com.school.notification.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * DTO for Notification create/update and response.
+ * DTO for Notification creation, broadcast, and response.
  */
 @Data
 @Builder
@@ -20,14 +22,20 @@ public class NotificationDTO {
 
     private Long id;
 
-    @NotNull(message = "Parent ID is required")
     private Long parentId;
 
-    @NotBlank(message = "Title is required")
     private String title;
 
     @NotBlank(message = "Message is required")
     private String message;
+
+    @JsonAlias({"notificationDate", "date"})
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate date;
+
+    private String targetAudience;
+
+    private String status;
 
     private LocalDateTime createdAt;
 

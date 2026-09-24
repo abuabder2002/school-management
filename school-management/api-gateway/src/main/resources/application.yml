@@ -36,6 +36,11 @@ spring:
           predicates:
             - Path=/api/fees/**
 
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/notifications/**
+
       httpclient:
         connect-timeout: 3000
         response-timeout: 10s

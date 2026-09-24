@@ -18,6 +18,7 @@ import { FeesPage } from './pages/admin/FeesPage';
 import { HomeworkPage } from './pages/admin/HomeworkPage';
 import { HolidayPage } from './pages/admin/HolidayPage';
 import { LeaveRequestsPage } from './pages/admin/LeaveRequestsPage';
+import { NotificationsPage } from './pages/admin/NotificationsPage';
 import { ImportExportPage } from './pages/admin/ImportExportPage';
 
 // Teacher & Parent Pages
@@ -67,6 +68,7 @@ export const App = () => {
                 <Route path="homework" element={<HomeworkPage />} />
                 <Route path="holidays" element={<HolidayPage />} />
                 <Route path="leave" element={<LeaveRequestsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="import-export" element={<ImportExportPage />} />
               </Route>
 

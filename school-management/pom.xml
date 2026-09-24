@@ -20,6 +20,7 @@
         <module>academic-service</module>
         <module>attendance-service</module>
         <module>fee-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>

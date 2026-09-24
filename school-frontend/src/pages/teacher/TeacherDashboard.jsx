@@ -78,6 +78,7 @@ export const TeacherDashboard = () => {
         homeworkService.getAll(),
         holidayService.getAll(),
         leaveService.getAll(),
+        notificationService.getTeacherNotifications(),
       ]);
 
       if (stuRes.status === 'fulfilled' && stuRes.value?.data) {
@@ -113,6 +114,8 @@ export const TeacherDashboard = () => {
       if (hwRes.status === 'fulfilled' && hwRes.value?.data) setHomeworkList(hwRes.value.data);
       if (holRes.status === 'fulfilled' && holRes.value?.data) setHolidays(holRes.value.data);
       if (lvRes.status === 'fulfilled' && lvRes.value?.data) setLeaveRequests(lvRes.value.data);
+      const notifData = notifRes?.status === 'fulfilled' ? (notifRes.value?.data || notifRes.value || []) : [];
+      setNotifications(Array.isArray(notifData) ? notifData : []);
     } catch (err) {
       addToast('Failed to load teacher portal data', 'error');
     } finally {

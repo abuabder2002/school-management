@@ -81,6 +81,7 @@ export const ParentDashboard = () => {
         currentClassName ? homeworkService.getByClass(currentClassName) : Promise.resolve({ data: [] }),
         holidayService.getAll(),
         leaveService.getMyLeave(),
+        notificationService.getStudentNotifications(),
       ]);
 
       if (attRes.status === 'fulfilled' && attRes.value?.data) setAttendance(attRes.value.data);
@@ -89,6 +90,8 @@ export const ParentDashboard = () => {
       if (hwRes.status === 'fulfilled' && hwRes.value?.data) setHomework(hwRes.value.data || []);
       if (holRes.status === 'fulfilled' && holRes.value?.data) setHolidays(holRes.value.data || []);
       if (lvRes.status === 'fulfilled' && lvRes.value?.data) setLeaveRequests(lvRes.value.data || []);
+      const notifData = notifRes?.status === 'fulfilled' ? (notifRes.value?.data || notifRes.value || []) : [];
+      setNotifications(Array.isArray(notifData) ? notifData : []);
     } catch (err) {
       console.error('Failed to load parent overview', err);
     } finally {
