@@ -24,6 +24,11 @@ export const feeService = {
     return response.data;
   },
 
+  collectFee: async (collection) => {
+    const response = await api.post('/api/fees/collect-fee', collection);
+    return response.data;
+  },
+
   getPaymentsByFee: async (feeId) => {
     const response = await api.get(`/api/fees/${feeId}/payments`);
     return response.data;

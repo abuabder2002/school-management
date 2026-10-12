@@ -2,6 +2,13 @@ package com.school.fee.controller;
 
 import com.school.common.dto.ApiResponse;
 import com.school.fee.dto.FeeDTO;
+<<<<<<< HEAD
+=======
+import com.school.fee.dto.FeeCollectionRequest;
+import com.school.fee.dto.FeeCollectionResponse;
+import com.school.fee.dto.RecentPaymentDTO;
+import com.school.fee.dto.StudentBillingRowDTO;
+>>>>>>> 22873ba (Billing Changes)
 import com.school.fee.entity.Payment;
 import com.school.fee.service.FeeService;
 import jakarta.validation.Valid;
@@ -43,6 +50,17 @@ public class FeeController {
                                                           @Valid @RequestBody FeeDTO dto) {
         FeeDTO updated = feeService.updateFee(id, dto);
         return ResponseEntity.ok(ApiResponse.success("Fee record updated", updated));
+    }
+
+    /** POST /api/fees/collect-fee — Collect a single student's fee with authenticated admin audit data. */
+    @PostMapping("/collect-fee")
+    public ResponseEntity<ApiResponse<FeeCollectionResponse>> collectFee(
+            @Valid @RequestBody FeeCollectionRequest request,
+            @RequestHeader("X-Authenticated-User-Id") Long adminUserId,
+            @RequestHeader("X-Authenticated-Email") String adminEmail) {
+        FeeCollectionResponse result = feeService.collectFee(request, adminUserId, adminEmail);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Payment collected successfully", result));
     }
 
     /** POST /api/fees/{feeId}/payments — Record a payment against a fee */

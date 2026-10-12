@@ -38,6 +38,15 @@ public class Payment {
     /** CASH, ONLINE, BANK */
     private String paymentMethod;
 
+    @Column(name = "fee_component")
+    private String feeComponent;
+
+    @Column(name = "reference_number")
+    private String referenceNumber;
+
+    @Column(name = "admin_user")
+    private String adminUser;
+
     private String note;
 
     @CreationTimestamp
