@@ -6,8 +6,10 @@ import com.school.auth.dto.LoginRequest;
 import com.school.auth.dto.RegisterRequest;
 import com.school.auth.dto.UserSummaryDTO;
 import com.school.auth.entity.AuditLogEntry;
+import com.school.auth.entity.School;
 import com.school.auth.entity.User;
 import com.school.auth.repository.AuditLogRepository;
+import com.school.auth.repository.SchoolRepository;
 import com.school.auth.repository.UserRepository;
 import com.school.auth.security.JwtUtil;
 import com.school.common.enums.Role;
@@ -38,11 +40,30 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final StudentServiceClient studentServiceClient;
     private final AuditLogRepository auditLogRepository;
+    private final SchoolRepository schoolRepository;
 
     /** The email of whoever's JWT is driving the current request, or "system" outside a request. */
     private String currentActorEmail() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         return (authentication != null && authentication.getName() != null) ? authentication.getName() : "system";
+    }
+
+    /**
+     * The school a newly-created user should belong to: the acting admin's own school, or
+     * (for public self-registration, where there's no acting admin) the sole existing school,
+     * if there is exactly one. Returns null otherwise — e.g. a SUPER_ADMIN actor, who has no
+     * school of their own, or self-registration once more than one school exists.
+     */
+    private Long resolveSchoolIdForNewUser() {
+        String actorEmail = currentActorEmail();
+        if (!"system".equals(actorEmail)) {
+            Long actorSchoolId = userRepository.findByEmail(actorEmail).map(User::getSchoolId).orElse(null);
+            if (actorSchoolId != null) {
+                return actorSchoolId;
+            }
+        }
+        List<School> schools = schoolRepository.findAll();
+        return schools.size() == 1 ? schools.get(0).getId() : null;
     }
 
     private void logAudit(String action, String targetEmail, String targetRole, String details) {
@@ -73,6 +94,7 @@ public class UserService {
                 .assignedClass(request.getRole() == Role.TEACHER ? request.getAssignedClass() : null)
                 .assignedSection(request.getRole() == Role.TEACHER ? request.getAssignedSection() : null)
                 .dateOfBirth(request.getRole() != Role.PARENT ? request.getDateOfBirth() : null)
+                .schoolId(request.getRole() == Role.SUPER_ADMIN ? null : resolveSchoolIdForNewUser())
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -86,10 +108,14 @@ public class UserService {
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
                 savedUser.getId(),
-                savedUser.getStudentId()
+                savedUser.getStudentId(),
+                savedUser.getAssignedClass(),
+                savedUser.getAssignedSection(),
+                savedUser.getSchoolId()
         );
         return AuthResponse.of(token, savedUser.getId(), savedUser.getName(),
-                savedUser.getEmail(), savedUser.getRole(), savedUser.getStudentId());
+                savedUser.getEmail(), savedUser.getRole(), savedUser.getStudentId(),
+                savedUser.getAssignedClass(), savedUser.getAssignedSection(), savedUser.getSchoolId());
     }
 
     /**
@@ -111,6 +137,7 @@ public class UserService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.PARENT)
                 .studentId(request.getStudentId())
+                .schoolId(resolveSchoolIdForNewUser())
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -120,10 +147,14 @@ public class UserService {
                 savedUser.getEmail(),
                 savedUser.getRole().name(),
                 savedUser.getId(),
-                savedUser.getStudentId()
+                savedUser.getStudentId(),
+                null,
+                null,
+                savedUser.getSchoolId()
         );
         return AuthResponse.of(token, savedUser.getId(), savedUser.getName(),
-                savedUser.getEmail(), savedUser.getRole(), savedUser.getStudentId());
+                savedUser.getEmail(), savedUser.getRole(), savedUser.getStudentId(),
+                null, null, savedUser.getSchoolId());
     }
 
     /**
@@ -173,11 +204,12 @@ public class UserService {
                 user.getId(),
                 user.getStudentId(),
                 user.getAssignedClass(),
-                user.getAssignedSection()
+                user.getAssignedSection(),
+                user.getSchoolId()
         );
         return AuthResponse.of(token, user.getId(), user.getName(),
                 user.getEmail(), user.getRole(), user.getStudentId(),
-                user.getAssignedClass(), user.getAssignedSection());
+                user.getAssignedClass(), user.getAssignedSection(), user.getSchoolId());
     }
 
     /**
@@ -207,6 +239,7 @@ public class UserService {
                             .password(passwordEncoder.encode(request.getPassword()))
                             .role(Role.PARENT)
                             .studentId(student.getStudentId())
+                            .schoolId(resolveSchoolIdForNewUser())
                             .build();
                     return userRepository.save(newUser);
                 });
@@ -238,10 +271,14 @@ public class UserService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.getId(),
-                student.getStudentId()
+                student.getStudentId(),
+                null,
+                null,
+                user.getSchoolId()
         );
         return AuthResponse.of(token, user.getId(), user.getName(),
-                user.getEmail(), user.getRole(), student.getStudentId());
+                user.getEmail(), user.getRole(), student.getStudentId(),
+                null, null, user.getSchoolId());
     }
 
     /**

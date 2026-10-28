@@ -48,6 +48,8 @@ const IdCardsPage = lazyPage(() => import('./pages/admin/IdCardsPage'), 'IdCards
 const TeacherDashboard = lazyPage(() => import('./pages/teacher/TeacherDashboard'), 'TeacherDashboard');
 const TeacherLeavePage = lazyPage(() => import('./pages/teacher/TeacherLeavePage'), 'TeacherLeavePage');
 const ParentDashboard = lazyPage(() => import('./pages/parent/ParentDashboard'), 'ParentDashboard');
+const AddSchoolPage = lazyPage(() => import('./pages/superadmin/AddSchoolPage'), 'AddSchoolPage');
+const SubscriptionPage = lazyPage(() => import('./pages/superadmin/SubscriptionPage'), 'SubscriptionPage');
 
 // Index Landing Resolver
 const HomeRedirect = () => {
@@ -66,6 +68,7 @@ const HomeRedirect = () => {
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   const role = user?.role?.toUpperCase();
+  if (role === 'SUPER_ADMIN' || role === 'ROLE_SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
   if (role === 'ADMIN' || role === 'ROLE_ADMIN') return <Navigate to="/admin" replace />;
   if (role === 'TEACHER' || role === 'ROLE_TEACHER') return <Navigate to="/teacher" replace />;
   if (role === 'PARENT' || role === 'ROLE_PARENT') return <Navigate to="/parent" replace />;
@@ -82,6 +85,20 @@ export const App = () => {
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<HomeRedirect />} />
+
+              {/* Super Admin Protected Routes */}
+              <Route
+                path="/super-admin"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/super-admin/schools" replace />} />
+                <Route path="schools" element={<AddSchoolPage />} />
+                <Route path="subscription" element={<SubscriptionPage />} />
+              </Route>
 
               {/* Admin Protected Routes */}
               <Route

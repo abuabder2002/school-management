@@ -32,13 +32,21 @@ public class JwtUtil {
      * studentId is null for ADMIN/TEACHER users.
      */
     public String generateToken(String email, String role, Long userId, Long studentId) {
-        return generateToken(email, role, userId, studentId, null, null);
+        return generateToken(email, role, userId, studentId, null, null, null);
     }
 
     /**
      * Generate a JWT token embedding email, role, userId, studentId, assignedClass, assignedSection.
      */
     public String generateToken(String email, String role, Long userId, Long studentId, String assignedClass, String assignedSection) {
+        return generateToken(email, role, userId, studentId, assignedClass, assignedSection, null);
+    }
+
+    /**
+     * Generate a JWT token embedding email, role, userId, studentId, assignedClass, assignedSection, schoolId.
+     * schoolId is null only for SUPER_ADMIN users.
+     */
+    public String generateToken(String email, String role, Long userId, Long studentId, String assignedClass, String assignedSection, Long schoolId) {
         var builder = Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
@@ -54,6 +62,9 @@ public class JwtUtil {
         }
         if (assignedSection != null && !assignedSection.isBlank()) {
             builder.claim("assignedSection", assignedSection);
+        }
+        if (schoolId != null) {
+            builder.claim("schoolId", schoolId);
         }
 
         return builder.signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
@@ -81,6 +92,18 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
         return claims.get("studentId", Long.class);
+    }
+
+    /**
+     * Extract the schoolId claim from a JWT token (null for SUPER_ADMIN users).
+     */
+    public Long getSchoolIdFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.get("schoolId", Long.class);
     }
 
     /**

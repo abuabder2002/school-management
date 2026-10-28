@@ -45,6 +45,12 @@ app:
     email: ${BOOTSTRAP_ADMIN_EMAIL:}
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}
     name: ${BOOTSTRAP_ADMIN_NAME:School Admin}
+  bootstrap-superadmin:
+    email: ${BOOTSTRAP_SUPERADMIN_EMAIL:}
+    password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:}
+    name: ${BOOTSTRAP_SUPERADMIN_NAME:Super Admin}
+  default-school:
+    name: ${DEFAULT_SCHOOL_NAME:Default School}
 
 jwt:
   secret: ${JWT_SECRET}

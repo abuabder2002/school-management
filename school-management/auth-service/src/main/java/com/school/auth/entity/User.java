@@ -61,4 +61,11 @@ public class User {
      */
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+
+    /**
+     * The School (tenant) this user belongs to. Null only for SUPER_ADMIN users, who manage
+     * every school rather than belonging to one.
+     */
+    @Column(name = "school_id")
+    private Long schoolId;
 }

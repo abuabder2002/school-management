@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }) => {
         email: authData.email,
         role: authData.role,
         studentId: authData.studentId ?? null,   // PARENT role only, null for others
+        schoolId: authData.schoolId ?? null,     // null only for SUPER_ADMIN
       };
       localStorage.setItem('token', authData.token);
       localStorage.setItem('user', JSON.stringify(userInfo));
@@ -54,6 +55,7 @@ export const AuthProvider = ({ children }) => {
         email: authData.email,
         role: authData.role,
         studentId: authData.studentId ?? null,
+        schoolId: authData.schoolId ?? null,
       };
       localStorage.setItem('token', authData.token);
       localStorage.setItem('user', JSON.stringify(userInfo));
@@ -75,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated: !!user,
+    isSuperAdmin: user?.role === 'SUPER_ADMIN',
     isAdmin: user?.role === 'ADMIN',
     isTeacher: user?.role === 'TEACHER',
     isParent: user?.role === 'PARENT',

@@ -16,11 +16,13 @@ import {
   ShieldCheck,
   GraduationCap,
   IdCard,
+  Building2,
+  CalendarClock,
   X
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }) => {
-  const { user, logout, isAdmin, isTeacher, isParent } = useAuth();
+  const { user, logout, isSuperAdmin, isAdmin, isTeacher, isParent } = useAuth();
   const { isEnabled: isTeacherModuleEnabled } = useFeatureToggles(isTeacher ? 'TEACHER' : null);
 
   const handleLinkClick = () => {
@@ -58,6 +60,28 @@ export const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Navigation Links */}
       <nav className="sidebar-nav">
+        {isSuperAdmin && (
+          <>
+            <div className="sidebar-section-title">Super Admin</div>
+            <NavLink
+              to="/super-admin/schools"
+              onClick={handleLinkClick}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <Building2 size={18} />
+              <span>Add School</span>
+            </NavLink>
+            <NavLink
+              to="/super-admin/subscription"
+              onClick={handleLinkClick}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <CalendarClock size={18} />
+              <span>Subscription</span>
+            </NavLink>
+          </>
+        )}
+
         {isAdmin && (
           <>
             <div className="sidebar-section-title">Administration</div>

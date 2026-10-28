@@ -36,19 +36,20 @@ public class AuthResponse {
     private String assignedClass;
     private String assignedSection;
 
+    /**
+     * The School (tenant) this user belongs to. Null only for SUPER_ADMIN users.
+     */
+    private Long schoolId;
+
     public static AuthResponse of(String token, Long userId, String name, String email, Role role, Long studentId) {
-        return AuthResponse.builder()
-                .token(token)
-                .type("Bearer")
-                .userId(userId)
-                .name(name)
-                .email(email)
-                .role(role)
-                .studentId(studentId)
-                .build();
+        return of(token, userId, name, email, role, studentId, null, null, null);
     }
 
     public static AuthResponse of(String token, Long userId, String name, String email, Role role, Long studentId, String assignedClass, String assignedSection) {
+        return of(token, userId, name, email, role, studentId, assignedClass, assignedSection, null);
+    }
+
+    public static AuthResponse of(String token, Long userId, String name, String email, Role role, Long studentId, String assignedClass, String assignedSection, Long schoolId) {
         return AuthResponse.builder()
                 .token(token)
                 .type("Bearer")
@@ -59,6 +60,7 @@ public class AuthResponse {
                 .studentId(studentId)
                 .assignedClass(assignedClass)
                 .assignedSection(assignedSection)
+                .schoolId(schoolId)
                 .build();
     }
 }
