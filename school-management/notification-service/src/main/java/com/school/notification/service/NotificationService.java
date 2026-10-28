@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -70,21 +71,54 @@ public class NotificationService {
                 .toList();
     }
 
-    /** Students/Teachers fetch notifications for their role */
-    public List<NotificationDTO> getNotificationsForRole(String role) {
-        // role is STUDENTS or TEACHERS — query returns matching + BOTH
-        String normalizedRole = normalizeAudience(role);
-        return notificationRepository.findByAudienceForRole(normalizedRole).stream()
+    /** Teachers/staff fetch notifications targeted at STAFF (or the legacy TEACHERS/BOTH values). */
+    public List<NotificationDTO> getNotificationsForStaffRole() {
+        return notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(n -> matchesStaffAudience(n.getAudience()))
                 .map(this::toDTO)
                 .toList();
     }
 
-    /** Parent/Student fetch, additionally filtered to broadcasts + notices targeted at their own child */
-    public List<NotificationDTO> getNotificationsForRoleAndStudent(String role, Long studentId) {
-        String normalizedRole = normalizeAudience(role);
-        return notificationRepository.findByAudienceForRoleAndStudent(normalizedRole, studentId).stream()
+    /**
+     * Parent/Student fetch: broadcasts targeted at ALL_STUDENTS, at the student's own class
+     * (or the legacy STUDENTS/BOTH values), additionally filtered to notices targeted at their
+     * own child when a notification carries a specific targetStudentId.
+     */
+    public List<NotificationDTO> getNotificationsForStudentRole(Long studentId, String className) {
+        return notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(n -> matchesStudentAudience(n.getAudience(), className))
+                .filter(n -> n.getTargetStudentId() == null || n.getTargetStudentId().equals(studentId))
                 .map(this::toDTO)
                 .toList();
+    }
+
+    /**
+     * Matches the new comma-separated token format (class internal values like "Class 1", plus
+     * ALL_STUDENTS/STAFF) as well as the legacy single-value STUDENTS/STUDENT/BOTH audience rows
+     * from before per-class targeting existed.
+     */
+    private boolean matchesStudentAudience(String audience, String className) {
+        if (audience == null || audience.isBlank()) return false;
+        String upper = audience.trim().toUpperCase();
+        if (upper.equals("STUDENTS") || upper.equals("STUDENT") || upper.equals("BOTH")) {
+            return true;
+        }
+        List<String> tokens = Arrays.stream(audience.split(",")).map(String::trim).toList();
+        if (tokens.stream().anyMatch(t -> t.equalsIgnoreCase("ALL_STUDENTS"))) {
+            return true;
+        }
+        return className != null && tokens.stream().anyMatch(t -> t.equalsIgnoreCase(className));
+    }
+
+    /** Same idea as matchesStudentAudience, for the STAFF token / legacy TEACHERS/TEACHER/BOTH. */
+    private boolean matchesStaffAudience(String audience) {
+        if (audience == null || audience.isBlank()) return false;
+        String upper = audience.trim().toUpperCase();
+        if (upper.equals("TEACHERS") || upper.equals("TEACHER") || upper.equals("BOTH")) {
+            return true;
+        }
+        List<String> tokens = Arrays.stream(audience.split(",")).map(String::trim).toList();
+        return tokens.stream().anyMatch(t -> t.equalsIgnoreCase("STAFF"));
     }
 
     private NotificationDTO toDTO(Notification notification) {

@@ -2,26 +2,20 @@ package com.school.notification.repository;
 
 import com.school.notification.entity.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 /**
- * Repository for Notification entity.
+ * Repository for Notification entity. Audience matching (class-level targeting, STAFF, legacy
+ * single-value rows) happens in NotificationService rather than JPQL — the token-list format
+ * (comma-separated class names, ALL_STUDENTS, STAFF) isn't safe to substring-match in SQL
+ * (e.g. "Class 1" vs "Class 10"), and the data volume here is small enough that filtering the
+ * full list in Java is simpler and correct.
  */
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    /** All notifications, newest first — for Admin history */
+    /** All notifications, newest first — for Admin history, and the base list every role filters from. */
     List<Notification> findAllByOrderByCreatedAtDesc();
-
-    /** Notifications visible to a specific audience role (e.g. STUDENTS sees STUDENTS + BOTH, TEACHERS sees TEACHERS + BOTH) */
-    @Query("SELECT n FROM Notification n WHERE n.audience = :role OR (:role = 'STUDENTS' AND n.audience = 'STUDENT') OR (:role = 'TEACHERS' AND n.audience = 'TEACHER') OR n.audience = 'BOTH' ORDER BY n.createdAt DESC")
-    List<Notification> findByAudienceForRole(@Param("role") String role);
-
-    /** Same as above, but a student-targeted notification (targetStudentId set) only shows to that student's own portal */
-    @Query("SELECT n FROM Notification n WHERE (n.audience = :role OR (:role = 'STUDENTS' AND n.audience = 'STUDENT') OR (:role = 'TEACHERS' AND n.audience = 'TEACHER') OR n.audience = 'BOTH') AND (n.targetStudentId IS NULL OR n.targetStudentId = :studentId) ORDER BY n.createdAt DESC")
-    List<Notification> findByAudienceForRoleAndStudent(@Param("role") String role, @Param("studentId") Long studentId);
 }

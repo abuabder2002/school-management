@@ -101,7 +101,7 @@ export const ParentDashboard = () => {
         feeService.getFeesByStudent(studentId),
         academicService.getMarksByStudent(studentId),
         leaveService.getMyLeave(),
-        notificationService.getMyNotifications(),
+        notificationService.getMyNotifications(studentRecord?.className),
         studentRecord?.className ? homeworkService.getByClass(studentRecord.className) : Promise.resolve(null),
       ]);
 

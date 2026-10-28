@@ -4,12 +4,19 @@ import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Bell, Send, Calendar, Users, CheckCircle2, RefreshCw, Plus, Edit2 } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
+import { CLASS_CONFIG } from '../../utils/academicClassOrder';
+
+const AUDIENCE_OPTIONS = [
+  { key: 'ALL_STUDENTS', label: 'All Students' },
+  ...CLASS_CONFIG.map((c) => ({ key: c.internalValue, label: c.displayLabel })),
+  { key: 'STAFF', label: 'Staff' },
+];
+const AUDIENCE_LABEL_BY_KEY = Object.fromEntries(AUDIENCE_OPTIONS.map((o) => [o.key, o.label]));
 
 export const NotificationsPage = () => {
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [targetStudents, setTargetStudents] = useState(true);
-  const [targetTeachers, setTargetTeachers] = useState(false);
+  const [selectedAudience, setSelectedAudience] = useState(() => new Set(['ALL_STUDENTS']));
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [showForm, setShowForm] = useState(true);
@@ -29,17 +36,25 @@ export const NotificationsPage = () => {
     loadHistory();
   }, []);
 
+  const toggleAudience = (key) => {
+    setSelectedAudience((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (!message.trim()) {
       addToast('Please enter a notification message', 'warning');
       return;
     }
-    if (!targetStudents && !targetTeachers) {
+    if (selectedAudience.size === 0) {
       addToast('Select at least one target audience', 'warning');
       return;
     }
-    const audience = targetStudents && targetTeachers ? 'BOTH' : targetStudents ? 'STUDENTS' : 'TEACHERS';
+    const audience = Array.from(selectedAudience).join(',');
 
     try {
       setSending(true);
@@ -102,22 +117,31 @@ export const NotificationsPage = () => {
     }
   };
 
+  // Handles both the legacy single-value rows (STUDENTS/TEACHERS/BOTH) and the new
+  // comma-separated token format (class names, ALL_STUDENTS, STAFF).
   const audienceLabel = (val) => {
     switch (val) {
-      case 'STUDENTS': return 'Students';
-      case 'TEACHERS': return 'Teachers';
-      case 'BOTH': return 'All Users (Both)';
-      default: return val;
+      case 'STUDENTS': return 'All Students';
+      case 'TEACHERS': return 'Staff';
+      case 'BOTH': return 'All Students, Staff';
+      case 'ADMIN': return 'Admin (internal)';
+      default:
+        return (val || '')
+          .split(',')
+          .map((t) => AUDIENCE_LABEL_BY_KEY[t.trim()] || t.trim())
+          .filter(Boolean)
+          .join(', ');
     }
   };
 
   const audienceBadgeClass = (val) => {
-    switch (val) {
-      case 'STUDENTS': return 'badge-primary';
-      case 'TEACHERS': return 'badge-warning';
-      case 'BOTH': return 'badge-success';
-      default: return 'badge-secondary';
-    }
+    if (val === 'STUDENTS' || val === 'BOTH') return 'badge-success';
+    if (val === 'TEACHERS') return 'badge-warning';
+    if (val === 'ADMIN') return 'badge-secondary';
+    const tokens = (val || '').split(',').map((t) => t.trim());
+    if (tokens.includes('ALL_STUDENTS') && tokens.includes('STAFF')) return 'badge-success';
+    if (tokens.includes('STAFF')) return 'badge-warning';
+    return 'badge-primary';
   };
 
   return (
@@ -166,27 +190,26 @@ export const NotificationsPage = () => {
             <form onSubmit={handleSend}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                 {/* Target Audience */}
-                <div className="form-group" style={{ margin: 0 }}>
+                <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
                   <label className="form-label">
-                    Target Audience *
+                    Target Audience * <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(select one or more)</span>
                   </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.5rem 0' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={targetStudents}
-                        onChange={(e) => setTargetStudents(e.target.checked)}
-                      />
-                      Students & Parents
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={targetTeachers}
-                        onChange={(e) => setTargetTeachers(e.target.checked)}
-                      />
-                      Teaching Faculty
-                    </label>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                    gap: '0.4rem 0.75rem',
+                    padding: '0.5rem 0',
+                  }}>
+                    {AUDIENCE_OPTIONS.map((opt) => (
+                      <label key={opt.key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.825rem', fontWeight: 500, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedAudience.has(opt.key)}
+                          onChange={() => toggleAudience(opt.key)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
                   </div>
                 </div>
 

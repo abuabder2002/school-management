@@ -97,9 +97,16 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success(history));
     }
 
-    /** GET /api/notifications/my — Students/Teachers fetch their applicable notifications */
+    /**
+     * GET /api/notifications/my — Students/Teachers fetch their applicable notifications.
+     * className is supplied by Parent/Student portals (they already have their own child's
+     * class loaded) so class-targeted broadcasts can be matched without notification-service
+     * needing its own call out to student-service.
+     */
     @GetMapping("/my")
-    public ResponseEntity<ApiResponse<List<NotificationDTO>>> getMyNotifications(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<List<NotificationDTO>>> getMyNotifications(
+            @RequestParam(value = "className", required = false) String className,
+            HttpServletRequest request) {
         String token = jwtDecoder.extractRaw(request.getHeader("Authorization"));
         if (token == null || !jwtDecoder.isValidToken(token)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -108,16 +115,11 @@ public class NotificationController {
 
         String role = jwtDecoder.getRole(token);
 
-        // Map user role to audience filter
-        String audienceFilter;
         if ("TEACHER".equals(role)) {
-            audienceFilter = "TEACHERS";
+            return ResponseEntity.ok(ApiResponse.success(notificationService.getNotificationsForStaffRole()));
         } else if ("PARENT".equals(role) || "STUDENT".equals(role)) {
-            // Parents and Students see student notifications, excluding ones targeted at a different child
             Long studentId = jwtDecoder.getStudentId(token);
-            List<NotificationDTO> notifications = studentId != null
-                    ? notificationService.getNotificationsForRoleAndStudent("STUDENTS", studentId)
-                    : notificationService.getNotificationsForRole("STUDENTS");
+            List<NotificationDTO> notifications = notificationService.getNotificationsForStudentRole(studentId, className);
             return ResponseEntity.ok(ApiResponse.success(notifications));
         } else if ("ADMIN".equals(role)) {
             // Admin can see all
@@ -127,8 +129,5 @@ public class NotificationController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("Unknown role"));
         }
-
-        List<NotificationDTO> notifications = notificationService.getNotificationsForRole(audienceFilter);
-        return ResponseEntity.ok(ApiResponse.success(notifications));
     }
 }

@@ -41,6 +41,12 @@ public class SchoolController {
         return ResponseEntity.ok(ApiResponse.success(schoolService.listSchools()));
     }
 
+    /** ADMIN-only read-only view of the caller's own school (matched before the SUPER_ADMIN rules below). */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<SchoolDTO>> getOwnSchool() {
+        return ResponseEntity.ok(ApiResponse.success(schoolService.getOwnSchool()));
+    }
+
     @PutMapping("/{id}/subscription")
     public ResponseEntity<ApiResponse<SchoolDTO>> updateSubscription(
             @PathVariable("id") Long id,

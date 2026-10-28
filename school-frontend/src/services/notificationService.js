@@ -14,9 +14,10 @@ export const notificationService = {
     return response.data;
   },
 
-  /** Student/Teacher: Get my applicable notifications */
-  getMyNotifications: async () => {
-    const response = await api.get('/api/notifications/my');
+  /** Student/Teacher: Get my applicable notifications. className is needed for Parent/Student
+   *  portals so class-targeted broadcasts can be matched (ignored for Teacher/Admin). */
+  getMyNotifications: async (className) => {
+    const response = await api.get('/api/notifications/my', { params: className ? { className } : {} });
     return response.data;
   },
 

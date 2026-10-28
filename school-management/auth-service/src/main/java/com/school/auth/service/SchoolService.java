@@ -12,6 +12,7 @@ import com.school.common.exception.BadRequestException;
 import com.school.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,6 +93,21 @@ public class SchoolService {
                 .map(User::getEmail)
                 .orElse(null);
         return toDTO(saved, adminEmail);
+    }
+
+    /** The caller's own school, read-only (ADMIN role) — resolved from their own User row, never a path/body parameter. */
+    public SchoolDTO getOwnSchool() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = (authentication != null) ? authentication.getName() : null;
+        Long schoolId = email != null
+                ? userRepository.findByEmail(email).map(User::getSchoolId).orElse(null)
+                : null;
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("School", "id", schoolId));
+        return toDTO(school, email);
     }
 
     private SchoolDTO toDTO(School school, String adminEmail) {

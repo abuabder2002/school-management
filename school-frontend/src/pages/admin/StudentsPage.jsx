@@ -197,7 +197,9 @@ export const StudentsPage = () => {
       list = list.filter((s) => (s.section || '').trim().toUpperCase() === sectionFilter.toUpperCase());
     }
 
-    if (!classSearch || !classSearch.trim()) return list;
+    if (!classSearch || !classSearch.trim()) {
+      return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    }
     const q = classSearch.trim().toLowerCase();
     const rawDigits = q.replace(/\D/g, '');
 
@@ -231,7 +233,7 @@ export const StudentsPage = () => {
         ));
 
       return textMatch || phoneMatch;
-    });
+    }).sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
   }, [students, classSearch, selectedClass]);
 
   // Master Search effect: Debounced search across all students in school, optionally

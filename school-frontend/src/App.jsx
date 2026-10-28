@@ -45,9 +45,13 @@ const NotificationsPage = lazyPage(() => import('./pages/admin/NotificationsPage
 const ModuleAccessPage = lazyPage(() => import('./pages/admin/ModuleAccessPage'), 'ModuleAccessPage');
 const BoardResultsPage = lazyPage(() => import('./pages/admin/BoardResultsPage'), 'BoardResultsPage');
 const IdCardsPage = lazyPage(() => import('./pages/admin/IdCardsPage'), 'IdCardsPage');
+const DailySchedulePage = lazyPage(() => import('./pages/admin/DailySchedulePage'), 'DailySchedulePage');
+const VacanciesPage = lazyPage(() => import('./pages/admin/VacanciesPage'), 'VacanciesPage');
+const SubscriptionViewPage = lazyPage(() => import('./pages/admin/SubscriptionViewPage'), 'SubscriptionViewPage');
 const TeacherDashboard = lazyPage(() => import('./pages/teacher/TeacherDashboard'), 'TeacherDashboard');
 const TeacherLeavePage = lazyPage(() => import('./pages/teacher/TeacherLeavePage'), 'TeacherLeavePage');
 const ParentDashboard = lazyPage(() => import('./pages/parent/ParentDashboard'), 'ParentDashboard');
+const SuperAdminDashboard = lazyPage(() => import('./pages/superadmin/SuperAdminDashboard'), 'SuperAdminDashboard');
 const AddSchoolPage = lazyPage(() => import('./pages/superadmin/AddSchoolPage'), 'AddSchoolPage');
 const SubscriptionPage = lazyPage(() => import('./pages/superadmin/SubscriptionPage'), 'SubscriptionPage');
 
@@ -95,7 +99,7 @@ export const App = () => {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/super-admin/schools" replace />} />
+                <Route index element={<SuperAdminDashboard />} />
                 <Route path="schools" element={<AddSchoolPage />} />
                 <Route path="subscription" element={<SubscriptionPage />} />
               </Route>
@@ -127,6 +131,9 @@ export const App = () => {
                 <Route path="module-access" element={<ModuleAccessPage />} />
                 <Route path="board-results" element={<BoardResultsPage />} />
                 <Route path="id-cards" element={<IdCardsPage />} />
+                <Route path="daily-schedule" element={<DailySchedulePage />} />
+                <Route path="vacancies" element={<VacanciesPage />} />
+                <Route path="subscription" element={<SubscriptionViewPage />} />
               </Route>
 
               {/* Teacher Protected Routes */}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFeatureToggles } from '../../hooks/useFeatureToggles';
 import { Logo } from '../common/Logo';
@@ -18,12 +18,66 @@ import {
   IdCard,
   Building2,
   CalendarClock,
+  Briefcase,
+  ChevronDown,
   X
 } from 'lucide-react';
+
+// Collapses a group of nav links under a toggleable header, so the Admin sidebar doesn't stay
+// one long flat list as modules get added. Open/closed state is a per-viewer convenience
+// (remembered in localStorage), and a group auto-opens when one of its own links is active.
+const NavGroup = ({ title, storageKey, active, children }) => {
+  const [open, setOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`sidebar.group.${storageKey}`);
+      return stored === null ? true : stored === 'open';
+    } catch {
+      return true;
+    }
+  });
+
+  const isOpen = open || active;
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try {
+      localStorage.setItem(`sidebar.group.${storageKey}`, next ? 'open' : 'closed');
+    } catch {
+      // ignore — per-viewer convenience only
+    }
+  };
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={toggle}
+        className="sidebar-section-title"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '0.5rem 1rem',
+        }}
+      >
+        <span>{title}</span>
+        <ChevronDown size={13} style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }} />
+      </button>
+      {isOpen && children}
+    </div>
+  );
+};
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const { user, logout, isSuperAdmin, isAdmin, isTeacher, isParent } = useAuth();
   const { isEnabled: isTeacherModuleEnabled } = useFeatureToggles(isTeacher ? 'TEACHER' : null);
+  const location = useLocation();
+  const pathStartsWith = (...prefixes) => prefixes.some((p) => location.pathname.startsWith(p));
 
   const handleLinkClick = () => {
     if (onClose && window.innerWidth <= 768) {
@@ -64,6 +118,15 @@ export const Sidebar = ({ isOpen, onClose }) => {
           <>
             <div className="sidebar-section-title">Super Admin</div>
             <NavLink
+              to="/super-admin"
+              end
+              onClick={handleLinkClick}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </NavLink>
+            <NavLink
               to="/super-admin/schools"
               onClick={handleLinkClick}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
@@ -94,86 +157,60 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <LayoutDashboard size={18} />
               <span>Dashboard</span>
             </NavLink>
-            <NavLink
-              to="/admin/students"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <Users size={18} />
-              <span>Students</span>
-            </NavLink>
-            <NavLink
-              to="/admin/marks"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <Award size={18} />
-              <span>Marks</span>
-            </NavLink>
-            <NavLink
-              to="/admin/fees"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <DollarSign size={18} />
-              <span>Billing</span>
-            </NavLink>
-            <NavLink
-              to="/admin/leave"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <FileText size={18} />
-              <span>Leave Records</span>
-            </NavLink>
-            <NavLink
-              to="/admin/leave-reasons"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <BookMarked size={18} />
-              <span>Leave Reasons</span>
-            </NavLink>
-            <NavLink
-              to="/admin/notifications"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <Bell size={18} />
-              <span>Notifications</span>
-            </NavLink>
-            <NavLink
-              to="/admin/staff"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <KeyRound size={18} />
-              <span>Staff Accounts</span>
-            </NavLink>
-            <NavLink
-              to="/admin/module-access"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <ShieldCheck size={18} />
-              <span>Module Access</span>
-            </NavLink>
-            <NavLink
-              to="/admin/board-results"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <GraduationCap size={18} />
-              <span>Board Results</span>
-            </NavLink>
-            <NavLink
-              to="/admin/id-cards"
-              onClick={handleLinkClick}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <IdCard size={18} />
-              <span>ID Cards</span>
-            </NavLink>
+
+            <NavGroup title="Academics" storageKey="academics" active={pathStartsWith('/admin/students', '/admin/marks', '/admin/board-results', '/admin/daily-schedule')}>
+              <NavLink to="/admin/students" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <Users size={18} /><span>Students</span>
+              </NavLink>
+              <NavLink to="/admin/marks" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <Award size={18} /><span>Marks</span>
+              </NavLink>
+              <NavLink to="/admin/board-results" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <GraduationCap size={18} /><span>Board Results</span>
+              </NavLink>
+              <NavLink to="/admin/daily-schedule" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <CalendarClock size={18} /><span>Daily Schedule</span>
+              </NavLink>
+            </NavGroup>
+
+            <NavGroup title="Finance" storageKey="finance" active={pathStartsWith('/admin/fees', '/admin/billing', '/admin/subscription')}>
+              <NavLink to="/admin/fees" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <DollarSign size={18} /><span>Billing</span>
+              </NavLink>
+              <NavLink to="/admin/subscription" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <CalendarClock size={18} /><span>Subscription</span>
+              </NavLink>
+            </NavGroup>
+
+            <NavGroup title="Communication" storageKey="communication" active={pathStartsWith('/admin/notifications')}>
+              <NavLink to="/admin/notifications" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <Bell size={18} /><span>Notifications</span>
+              </NavLink>
+            </NavGroup>
+
+            <NavGroup title="Staff" storageKey="staff" active={pathStartsWith('/admin/staff', '/admin/vacancies', '/admin/module-access')}>
+              <NavLink to="/admin/staff" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <KeyRound size={18} /><span>Staff Accounts</span>
+              </NavLink>
+              <NavLink to="/admin/vacancies" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <Briefcase size={18} /><span>Vacancies</span>
+              </NavLink>
+              <NavLink to="/admin/module-access" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <ShieldCheck size={18} /><span>Module Access</span>
+              </NavLink>
+            </NavGroup>
+
+            <NavGroup title="Records" storageKey="records" active={pathStartsWith('/admin/leave', '/admin/id-cards')}>
+              <NavLink to="/admin/leave" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <FileText size={18} /><span>Leave Records</span>
+              </NavLink>
+              <NavLink to="/admin/leave-reasons" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <BookMarked size={18} /><span>Leave Reasons</span>
+              </NavLink>
+              <NavLink to="/admin/id-cards" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                <IdCard size={18} /><span>ID Cards</span>
+              </NavLink>
+            </NavGroup>
           </>
         )}
 

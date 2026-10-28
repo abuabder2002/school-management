@@ -6,6 +6,12 @@ export const schoolService = {
     return response.data;
   },
 
+  /** ADMIN: read-only view of the caller's own school's subscription. */
+  getOwnSchool: async () => {
+    const response = await api.get('/api/auth/schools/me');
+    return response.data;
+  },
+
   createSchool: async (schoolData) => {
     // schoolData: { name, adminName, adminEmail, adminPassword, subscriptionStart, subscriptionEnd, planType }
     const response = await api.post('/api/auth/schools', schoolData);
