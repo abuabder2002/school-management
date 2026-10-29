@@ -40,13 +40,16 @@ public class AcademicController {
     // ---- Classes ----
 
     @GetMapping("/classes")
-    public ResponseEntity<ApiResponse<List<AcademicClass>>> getAllClasses() {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllClasses()));
+    public ResponseEntity<ApiResponse<List<AcademicClass>>> getAllClasses(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllClasses(resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/classes/{id}")
-    public ResponseEntity<ApiResponse<AcademicClass>> getClassById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getClassById(id)));
+    public ResponseEntity<ApiResponse<AcademicClass>> getClassById(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getClassById(id, resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/classes")
@@ -54,7 +57,7 @@ public class AcademicController {
             @RequestBody AcademicClass academicClass,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        AcademicClass created = academicService.createClass(academicClass);
+        AcademicClass created = academicService.createClass(academicClass, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Class created", created));
     }
 
@@ -64,7 +67,7 @@ public class AcademicController {
             @RequestBody AcademicClass academicClass,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Class updated", academicService.updateClass(id, academicClass)));
+        return ResponseEntity.ok(ApiResponse.success("Class updated", academicService.updateClass(id, academicClass, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/classes/{id}")
@@ -72,20 +75,23 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        academicService.deleteClass(id);
+        academicService.deleteClass(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Class deleted", null));
     }
 
     // ---- Subjects ----
 
     @GetMapping("/subjects")
-    public ResponseEntity<ApiResponse<List<Subject>>> getAllSubjects() {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllSubjects()));
+    public ResponseEntity<ApiResponse<List<Subject>>> getAllSubjects(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllSubjects(resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/subjects/{id}")
-    public ResponseEntity<ApiResponse<Subject>> getSubjectById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getSubjectById(id)));
+    public ResponseEntity<ApiResponse<Subject>> getSubjectById(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getSubjectById(id, resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/subjects/class/{classId}")
@@ -98,7 +104,7 @@ public class AcademicController {
             @RequestBody Subject subject,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        Subject created = academicService.createSubject(subject);
+        Subject created = academicService.createSubject(subject, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Subject created", created));
     }
 
@@ -108,7 +114,7 @@ public class AcademicController {
             @RequestBody Subject subject,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Subject updated", academicService.updateSubject(id, subject)));
+        return ResponseEntity.ok(ApiResponse.success("Subject updated", academicService.updateSubject(id, subject, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/subjects/{id}")
@@ -116,20 +122,23 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        academicService.deleteSubject(id);
+        academicService.deleteSubject(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Subject deleted", null));
     }
 
     // ---- Exams ----
 
     @GetMapping("/exams")
-    public ResponseEntity<ApiResponse<List<Exam>>> getAllExams() {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllExams()));
+    public ResponseEntity<ApiResponse<List<Exam>>> getAllExams(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllExams(resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/exams/{id}")
-    public ResponseEntity<ApiResponse<Exam>> getExamById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getExamById(id)));
+    public ResponseEntity<ApiResponse<Exam>> getExamById(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getExamById(id, resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/exams")
@@ -137,7 +146,7 @@ public class AcademicController {
             @RequestBody Exam exam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        Exam created = academicService.createExam(exam);
+        Exam created = academicService.createExam(exam, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Exam created", created));
     }
 
@@ -147,7 +156,7 @@ public class AcademicController {
             @RequestBody Exam exam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Exam updated", academicService.updateExam(id, exam)));
+        return ResponseEntity.ok(ApiResponse.success("Exam updated", academicService.updateExam(id, exam, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/exams/{id}")
@@ -155,7 +164,7 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        academicService.deleteExam(id);
+        academicService.deleteExam(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Exam deleted", null));
     }
 
@@ -170,7 +179,7 @@ public class AcademicController {
             @RequestParam(value = "subjectName", required = false) String subjectName,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        List<MarkDTO> marks = academicService.searchMarks(className, section, examName, subjectName);
+        List<MarkDTO> marks = academicService.searchMarks(className, section, examName, subjectName, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(marks));
     }
 
@@ -179,7 +188,7 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success(academicService.getMarkById(id)));
+        return ResponseEntity.ok(ApiResponse.success(academicService.getMarkById(id, resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/marks/student/{studentId}")
@@ -187,6 +196,7 @@ public class AcademicController {
             @PathVariable("studentId") Long studentId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         // Enforce parent-child isolation if called by a PARENT role
+        Long schoolId = null;
         if (authHeader != null) {
             String token = jwtDecoder.extractRaw(authHeader);
             if (token != null && jwtDecoder.isValidToken(token)) {
@@ -200,9 +210,10 @@ public class AcademicController {
                                 .body(ApiResponse.error("You are only authorized to view marks for your linked child"));
                     }
                 }
+                schoolId = jwtDecoder.getSchoolId(token);
             }
         }
-        return ResponseEntity.ok(ApiResponse.success(academicService.getMarksByStudent(studentId)));
+        return ResponseEntity.ok(ApiResponse.success(academicService.getMarksByStudent(studentId, schoolId)));
     }
 
     @GetMapping("/marks/exam/{examId}")
@@ -210,7 +221,7 @@ public class AcademicController {
             @PathVariable("examId") Long examId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success(academicService.getMarksByExam(examId)));
+        return ResponseEntity.ok(ApiResponse.success(academicService.getMarksByExam(examId, resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/marks")
@@ -218,7 +229,7 @@ public class AcademicController {
             @RequestBody MarkDTO markDTO,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        MarkDTO created = academicService.saveOrUpdateMark(markDTO);
+        MarkDTO created = academicService.saveOrUpdateMark(markDTO, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Mark recorded", created));
     }
 
@@ -228,7 +239,7 @@ public class AcademicController {
             @RequestBody MarkDTO markDTO,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Mark updated", academicService.updateMark(id, markDTO)));
+        return ResponseEntity.ok(ApiResponse.success("Mark updated", academicService.updateMark(id, markDTO, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/marks/{id}")
@@ -236,16 +247,25 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        academicService.deleteMark(id);
+        academicService.deleteMark(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Mark deleted", null));
     }
 
+    /**
+     * Also the internal cleanup target from student-service (no Authorization header) when a
+     * student is deleted — see AcademicService.deleteMarksByStudent(Long) for why that path is
+     * safely left unscoped.
+     */
     @DeleteMapping("/marks/student/{studentId}")
     public ResponseEntity<ApiResponse<Void>> deleteMarksByStudent(
             @PathVariable("studentId") Long studentId,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyAdminRole(authHeader);
-        academicService.deleteMarksByStudent(studentId);
+        if (authHeader == null) {
+            academicService.deleteMarksByStudent(studentId);
+        } else {
+            verifyAdminRole(authHeader);
+            academicService.deleteMarksByStudent(studentId, resolveSchoolId(authHeader));
+        }
         return ResponseEntity.ok(ApiResponse.success("Marks deleted for student", null));
     }
 
@@ -254,7 +274,7 @@ public class AcademicController {
             @RequestBody MarkBatchRequest request,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        List<MarkDTO> saved = academicService.saveBatchMarks(request);
+        List<MarkDTO> saved = academicService.saveBatchMarks(request, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Marks saved successfully", saved));
     }
 
@@ -264,7 +284,7 @@ public class AcademicController {
             @RequestParam(value = "examName", required = false) String examName,
             @RequestHeader(value = "Authorization", required = false) String authHeader) throws java.io.IOException {
         verifyStaffRole(authHeader);
-        BulkUploadResult result = markBulkUploadService.processBulkUpload(file, examName);
+        BulkUploadResult result = markBulkUploadService.processBulkUpload(file, examName, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Bulk marks processed", result));
     }
 
@@ -275,7 +295,7 @@ public class AcademicController {
             @RequestParam(value = "examName", required = false) String examName,
             @RequestHeader(value = "Authorization", required = false) String authHeader) throws java.io.IOException {
         verifyStaffRole(authHeader);
-        byte[] bytes = markBulkUploadService.generateTemplate(className, subjectIds, examName);
+        byte[] bytes = markBulkUploadService.generateTemplate(className, subjectIds, examName, resolveSchoolId(authHeader));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"marks_template.xlsx\"")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
@@ -285,13 +305,16 @@ public class AcademicController {
     // ---- Homework ----
 
     @GetMapping("/homework")
-    public ResponseEntity<ApiResponse<List<Homework>>> getAllHomework() {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllHomework()));
+    public ResponseEntity<ApiResponse<List<Homework>>> getAllHomework(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllHomework(resolveSchoolId(authHeader))));
     }
 
     @GetMapping("/homework/class/{className}")
-    public ResponseEntity<ApiResponse<List<Homework>>> getHomeworkByClass(@PathVariable("className") String className) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getHomeworkByClass(className)));
+    public ResponseEntity<ApiResponse<List<Homework>>> getHomeworkByClass(
+            @PathVariable("className") String className,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getHomeworkByClass(className, resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/homework")
@@ -299,7 +322,7 @@ public class AcademicController {
             @RequestBody Homework homework,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        Homework created = academicService.createHomework(homework);
+        Homework created = academicService.createHomework(homework, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Homework created", created));
     }
 
@@ -309,7 +332,7 @@ public class AcademicController {
             @RequestBody Homework homework,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Homework updated", academicService.updateHomework(id, homework)));
+        return ResponseEntity.ok(ApiResponse.success("Homework updated", academicService.updateHomework(id, homework, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/homework/{id}")
@@ -317,7 +340,7 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        academicService.deleteHomework(id);
+        academicService.deleteHomework(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Homework deleted", null));
     }
 
@@ -327,7 +350,7 @@ public class AcademicController {
     public ResponseEntity<ApiResponse<List<BoardResultDTO>>> getAllBoardResults(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults()));
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults(resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/board-results")
@@ -335,7 +358,7 @@ public class AcademicController {
             @jakarta.validation.Valid @RequestBody BoardResultDTO dto,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        BoardResultDTO created = academicService.createBoardResult(dto);
+        BoardResultDTO created = academicService.createBoardResult(dto, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Board result saved", created));
     }
 
@@ -345,7 +368,7 @@ public class AcademicController {
             @jakarta.validation.Valid @RequestBody BoardResultDTO dto,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Board result updated", academicService.updateBoardResult(id, dto)));
+        return ResponseEntity.ok(ApiResponse.success("Board result updated", academicService.updateBoardResult(id, dto, resolveSchoolId(authHeader))));
     }
 
     @DeleteMapping("/board-results/{id}")
@@ -353,7 +376,7 @@ public class AcademicController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        academicService.deleteBoardResult(id);
+        academicService.deleteBoardResult(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Board result deleted", null));
     }
 
@@ -386,5 +409,11 @@ public class AcademicController {
     private String normalizeRole(String role) {
         if (role == null) return "";
         return role.toUpperCase().replace("ROLE_", "").trim();
+    }
+
+    private Long resolveSchoolId(String authHeader) {
+        if (authHeader == null) return null;
+        String token = jwtDecoder.extractRaw(authHeader);
+        return token != null ? jwtDecoder.getSchoolId(token) : null;
     }
 }

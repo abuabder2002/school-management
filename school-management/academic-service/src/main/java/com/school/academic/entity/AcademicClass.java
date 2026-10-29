@@ -18,10 +18,13 @@ public class AcademicClass {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    // Unique per school (see SchoolIdBackfillRunner), not globally.
+    @Column(nullable = false)
     private String name;
 
     private String section;
 
     private String description;
+
+    private Long schoolId;
 }

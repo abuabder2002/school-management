@@ -41,4 +41,6 @@ public class Homework {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    private Long schoolId;
 }

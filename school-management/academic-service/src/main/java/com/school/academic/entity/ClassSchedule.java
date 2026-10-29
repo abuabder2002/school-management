@@ -3,10 +3,10 @@ package com.school.academic.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalTime;
+import java.time.LocalDate;
 
 /**
- * One period of a class's weekly timetable (e.g. Class 10 / A, Monday, Period 3, Math, 9:00-9:45).
+ * One class-schedule entry (e.g. Class 10 / A, 2026-10-29, Block A, Math, Mr. Rao).
  */
 @Entity
 @Table(name = "class_schedule")
@@ -25,18 +25,17 @@ public class ClassSchedule {
 
     private String section;
 
-    @Column(nullable = false)
-    private String dayOfWeek; // MONDAY..SATURDAY
+    // Not DB-NOT-NULL: ddl-auto=update adds new columns as NOT NULL in one step, which fails
+    // outright against a table that already has rows (as this one does from earlier testing).
+    // Required-ness for new entries is enforced in the form/controller instead.
+    private LocalDate scheduleDate;
 
-    @Column(nullable = false)
-    private Integer periodNumber;
-
-    private LocalTime startTime;
-
-    private LocalTime endTime;
+    private String block; // "A" or "B"
 
     @Column(nullable = false)
     private String subjectName;
 
-    private String teacherName;
+    private String teacherName; // staff member's name
+
+    private Long schoolId;
 }

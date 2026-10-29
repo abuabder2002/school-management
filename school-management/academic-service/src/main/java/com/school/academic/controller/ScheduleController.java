@@ -4,12 +4,14 @@ import com.school.academic.entity.ClassSchedule;
 import com.school.academic.security.JwtDecoder;
 import com.school.academic.service.ClassScheduleService;
 import com.school.common.dto.ApiResponse;
+import com.school.common.exception.BadRequestException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -26,8 +28,16 @@ public class ScheduleController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<ClassSchedule>>> getForClass(
             @RequestParam("className") String className,
-            @RequestParam(value = "section", required = false) String section) {
-        return ResponseEntity.ok(ApiResponse.success(scheduleService.getForClass(className, section)));
+            @RequestParam(value = "section", required = false) String section,
+            @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        LocalDate parsedDate = (date != null && !date.isBlank()) ? LocalDate.parse(date) : null;
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            throw new BadRequestException("schoolId could not be resolved.");
+        }
+        return ResponseEntity.ok(ApiResponse.success(scheduleService.getForClass(className, section, parsedDate, schoolId)));
     }
 
     @PostMapping
@@ -35,7 +45,7 @@ public class ScheduleController {
             @RequestBody ClassSchedule entry,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        ClassSchedule created = scheduleService.create(entry);
+        ClassSchedule created = scheduleService.create(entry, resolveSchoolId(authHeader, null));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Schedule entry created", created));
     }
 
@@ -45,7 +55,7 @@ public class ScheduleController {
             @RequestBody ClassSchedule entry,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Schedule entry updated", scheduleService.update(id, entry)));
+        return ResponseEntity.ok(ApiResponse.success("Schedule entry updated", scheduleService.update(id, entry, resolveSchoolId(authHeader, null))));
     }
 
     @DeleteMapping("/{id}")
@@ -53,7 +63,7 @@ public class ScheduleController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         verifyAdminRole(authHeader);
-        scheduleService.delete(id);
+        scheduleService.delete(id, resolveSchoolId(authHeader, null));
         return ResponseEntity.ok(ApiResponse.success("Schedule entry deleted", null));
     }
 
@@ -72,5 +82,13 @@ public class ScheduleController {
     private String normalizeRole(String role) {
         if (role == null) return "";
         return role.toUpperCase().replace("ROLE_", "").trim();
+    }
+
+    /** schoolIdParam (trusted internal caller) takes priority; otherwise resolve from the external caller's JWT. */
+    private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
+        if (schoolIdParam != null) return schoolIdParam;
+        if (authHeader == null) return null;
+        String token = jwtDecoder.extractRaw(authHeader);
+        return token != null ? jwtDecoder.getSchoolId(token) : null;
     }
 }

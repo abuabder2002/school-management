@@ -60,6 +60,19 @@ public class JwtDecoder {
         }
     }
 
+    /** Extract the schoolId claim. Null for SUPER_ADMIN tokens (by design). */
+    public Long getSchoolId(String token) {
+        if (!StringUtils.hasText(token)) return null;
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey()).build()
+                    .parseClaimsJws(token).getBody();
+            return claims.get("schoolId", Long.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public Long getStudentId(String token) {
         if (!StringUtils.hasText(token)) return null;
         try {

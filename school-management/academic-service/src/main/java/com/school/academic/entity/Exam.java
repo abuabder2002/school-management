@@ -30,4 +30,6 @@ public class Exam {
     private LocalDate examDate;
 
     private Integer totalMarks;
+
+    private Long schoolId;
 }

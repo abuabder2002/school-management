@@ -84,20 +84,20 @@ public class MarkBulkUploadService {
      * Generates the mark sheet template (.xlsx) for the chosen subjects, pre-filled with the
      * students of {@code className} (or every class when blank / "ALL").
      */
-    public byte[] generateTemplate(String className, List<Long> subjectIds, String examName) throws IOException {
+    public byte[] generateTemplate(String className, List<Long> subjectIds, String examName, Long schoolId) throws IOException {
         if (subjectIds == null || subjectIds.isEmpty()) {
             throw new IllegalArgumentException("Select at least one subject for the template.");
         }
         List<Subject> subjects = new ArrayList<>();
         for (Long id : subjectIds) {
-            Subject subject = subjectRepository.findById(id)
+            Subject subject = subjectRepository.findByIdAndSchoolId(id, schoolId)
                     .orElseThrow(() -> new IllegalArgumentException("Subject not found: " + id));
             if (!subjects.contains(subject)) subjects.add(subject);
         }
 
         double maxMarks = 100.0;
         if (examName != null && !examName.isBlank()) {
-            maxMarks = maxMarksOf(findExam(examName));
+            maxMarks = maxMarksOf(findExam(examName, schoolId));
         }
 
         boolean allClasses = className == null || className.isBlank() || "ALL".equalsIgnoreCase(className.trim());
@@ -227,7 +227,7 @@ public class MarkBulkUploadService {
      * every problem is reported per row / subject.
      */
     @Transactional
-    public BulkUploadResult processBulkUpload(MultipartFile file, String examName) throws IOException {
+    public BulkUploadResult processBulkUpload(MultipartFile file, String examName, Long schoolId) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("The uploaded file is empty.");
         }
@@ -238,7 +238,7 @@ public class MarkBulkUploadService {
         if (examName == null || examName.isBlank()) {
             throw new IllegalArgumentException("Please select the exam these marks belong to.");
         }
-        Exam exam = findExam(examName);
+        Exam exam = findExam(examName, schoolId);
         double maxMarks = maxMarksOf(exam);
 
         // Students indexed for matching
@@ -252,7 +252,7 @@ public class MarkBulkUploadService {
 
         // Master subjects by name and by code
         Map<String, Subject> subjectLookup = new HashMap<>();
-        List<Subject> allSubjects = subjectRepository.findAll();
+        List<Subject> allSubjects = subjectRepository.findBySchoolId(schoolId);
         for (Subject sub : allSubjects) {
             if (sub.getCode() != null && !sub.getCode().isBlank()) {
                 subjectLookup.put(normalizeText(sub.getCode()), sub);
@@ -447,7 +447,7 @@ public class MarkBulkUploadService {
                     }
                     if (!absent && marks == null) continue; // nothing entered for this subject
 
-                    if (saveMark(student, cols.subject, exam, absent ? 0.0 : marks, maxMarks, absent)) {
+                    if (saveMark(student, cols.subject, exam, absent ? 0.0 : marks, maxMarks, absent, schoolId)) {
                         created++;
                     } else {
                         updated++;
@@ -481,7 +481,7 @@ public class MarkBulkUploadService {
 
     /** Creates or updates one mark. Returns true when a new record was created. */
     private boolean saveMark(StudentInfoDTO student, Subject subject, Exam exam,
-                             double marks, double maxMarks, boolean absent) {
+                             double marks, double maxMarks, boolean absent, Long schoolId) {
         String grade = absent ? ABSENT_GRADE : Mark.calculateGrade(marks, maxMarks);
         Optional<Mark> existingOpt = markRepository
                 .findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
@@ -524,6 +524,7 @@ public class MarkBulkUploadService {
                 .remarks(absent ? ABSENT_REMARK : null)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .schoolId(schoolId)
                 .build());
         return true;
     }
@@ -625,9 +626,9 @@ public class MarkBulkUploadService {
     // 4. HELPERS
     // =========================================================================
 
-    private Exam findExam(String examName) {
+    private Exam findExam(String examName, Long schoolId) {
         String wanted = normalizeText(examName);
-        for (Exam ex : examRepository.findAll()) {
+        for (Exam ex : examRepository.findBySchoolId(schoolId)) {
             if (ex.getName() != null && normalizeText(ex.getName()).equals(wanted)) {
                 return ex;
             }

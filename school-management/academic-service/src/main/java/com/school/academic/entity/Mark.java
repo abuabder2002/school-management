@@ -51,6 +51,8 @@ public class Mark {
 
     private LocalDateTime updatedAt;
 
+    private Long schoolId;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

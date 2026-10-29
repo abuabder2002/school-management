@@ -16,7 +16,15 @@ public interface MarkRepository extends JpaRepository<Mark, Long> {
 
     long deleteByStudentId(Long studentId);
 
+    long deleteByStudentIdAndSchoolId(Long studentId, Long schoolId);
+
     List<Mark> findByExamId(Long examId);
+
+    List<Mark> findByStudentIdAndSchoolId(Long studentId, Long schoolId);
+
+    List<Mark> findByExamIdAndSchoolId(Long examId, Long schoolId);
+
+    Optional<Mark> findByIdAndSchoolId(Long id, Long schoolId);
 
     Optional<Mark> findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
             Long studentId, String subjectName, String examName);
@@ -28,13 +36,15 @@ public interface MarkRepository extends JpaRepository<Mark, Long> {
            "(:className IS NULL OR :className = '' OR LOWER(m.className) = LOWER(:className) OR LOWER(m.className) = LOWER(CONCAT('Class ', :className))) AND " +
            "(:section IS NULL OR :section = '' OR LOWER(m.section) = LOWER(:section)) AND " +
            "(:examName IS NULL OR :examName = '' OR LOWER(m.examName) = LOWER(:examName)) AND " +
-           "(:subjectName IS NULL OR :subjectName = '' OR LOWER(m.subjectName) = LOWER(:subjectName)) " +
+           "(:subjectName IS NULL OR :subjectName = '' OR LOWER(m.subjectName) = LOWER(:subjectName)) AND " +
+           "m.schoolId = :schoolId " +
            "ORDER BY m.className, m.section, m.admissionNumber, m.id")
     List<Mark> searchMarks(
             @Param("className") String className,
             @Param("section") String section,
             @Param("examName") String examName,
-            @Param("subjectName") String subjectName);
+            @Param("subjectName") String subjectName,
+            @Param("schoolId") Long schoolId);
 
     @Query("SELECT COUNT(m) > 0 FROM Mark m WHERE " +
            "(:subjectId IS NOT NULL AND m.subjectId = :subjectId) OR " +
@@ -43,12 +53,26 @@ public interface MarkRepository extends JpaRepository<Mark, Long> {
             @Param("subjectId") Long subjectId,
             @Param("subjectName") String subjectName);
 
+    @Query("SELECT COUNT(m) > 0 FROM Mark m WHERE m.schoolId = :schoolId AND ((:subjectId IS NOT NULL AND m.subjectId = :subjectId) OR " +
+           "(:subjectName IS NOT NULL AND TRIM(:subjectName) <> '' AND m.subjectName IS NOT NULL AND LOWER(TRIM(m.subjectName)) = LOWER(TRIM(:subjectName))))")
+    boolean existsBySubjectIdOrSubjectNameAndSchoolId(
+            @Param("subjectId") Long subjectId,
+            @Param("subjectName") String subjectName,
+            @Param("schoolId") Long schoolId);
+
     @Query("SELECT COUNT(m) > 0 FROM Mark m WHERE " +
            "(:examId IS NOT NULL AND m.examId = :examId) OR " +
            "(:examName IS NOT NULL AND TRIM(:examName) <> '' AND m.examName IS NOT NULL AND LOWER(TRIM(m.examName)) = LOWER(TRIM(:examName)))")
     boolean existsByExamIdOrExamName(
             @Param("examId") Long examId,
             @Param("examName") String examName);
+
+    @Query("SELECT COUNT(m) > 0 FROM Mark m WHERE m.schoolId = :schoolId AND ((:examId IS NOT NULL AND m.examId = :examId) OR " +
+           "(:examName IS NOT NULL AND TRIM(:examName) <> '' AND m.examName IS NOT NULL AND LOWER(TRIM(m.examName)) = LOWER(TRIM(:examName))))")
+    boolean existsByExamIdOrExamNameAndSchoolId(
+            @Param("examId") Long examId,
+            @Param("examName") String examName,
+            @Param("schoolId") Long schoolId);
 
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional

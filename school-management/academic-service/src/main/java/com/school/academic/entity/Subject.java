@@ -26,4 +26,6 @@ public class Subject {
     private Long classId;
 
     private String description;
+
+    private Long schoolId;
 }

@@ -6,6 +6,7 @@ import com.school.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -14,33 +15,37 @@ public class ClassScheduleService {
 
     private final ClassScheduleRepository scheduleRepository;
 
-    public List<ClassSchedule> getForClass(String className, String section) {
-        if (section != null && !section.isBlank()) {
-            return scheduleRepository.findByClassNameAndSectionOrderByDayOfWeekAscPeriodNumberAsc(className, section);
+    public List<ClassSchedule> getForClass(String className, String section, LocalDate date, Long schoolId) {
+        boolean hasSection = section != null && !section.isBlank();
+        if (date != null) {
+            return hasSection
+                    ? scheduleRepository.findByClassNameAndSectionAndScheduleDateAndSchoolIdOrderByBlockAsc(className, section, date, schoolId)
+                    : scheduleRepository.findByClassNameAndScheduleDateAndSchoolIdOrderByBlockAsc(className, date, schoolId);
         }
-        return scheduleRepository.findByClassNameOrderByDayOfWeekAscPeriodNumberAsc(className);
+        return hasSection
+                ? scheduleRepository.findByClassNameAndSectionAndSchoolIdOrderByScheduleDateDescBlockAsc(className, section, schoolId)
+                : scheduleRepository.findByClassNameAndSchoolIdOrderByScheduleDateDescBlockAsc(className, schoolId);
     }
 
-    public ClassSchedule create(ClassSchedule entry) {
+    public ClassSchedule create(ClassSchedule entry, Long schoolId) {
+        entry.setSchoolId(schoolId);
         return scheduleRepository.save(entry);
     }
 
-    public ClassSchedule update(Long id, ClassSchedule updated) {
-        ClassSchedule existing = scheduleRepository.findById(id)
+    public ClassSchedule update(Long id, ClassSchedule updated, Long schoolId) {
+        ClassSchedule existing = scheduleRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("ClassSchedule", "id", id));
         existing.setClassName(updated.getClassName());
         existing.setSection(updated.getSection());
-        existing.setDayOfWeek(updated.getDayOfWeek());
-        existing.setPeriodNumber(updated.getPeriodNumber());
-        existing.setStartTime(updated.getStartTime());
-        existing.setEndTime(updated.getEndTime());
+        existing.setScheduleDate(updated.getScheduleDate());
+        existing.setBlock(updated.getBlock());
         existing.setSubjectName(updated.getSubjectName());
         existing.setTeacherName(updated.getTeacherName());
         return scheduleRepository.save(existing);
     }
 
-    public void delete(Long id) {
-        if (!scheduleRepository.existsById(id)) {
+    public void delete(Long id, Long schoolId) {
+        if (!scheduleRepository.findByIdAndSchoolId(id, schoolId).isPresent()) {
             throw new ResourceNotFoundException("ClassSchedule", "id", id);
         }
         scheduleRepository.deleteById(id);

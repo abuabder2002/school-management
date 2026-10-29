@@ -42,29 +42,30 @@ public class AcademicService {
 
     // ---- AcademicClass ----
 
-    public List<AcademicClass> getAllClasses() {
-        return classRepository.findAll();
+    public List<AcademicClass> getAllClasses(Long schoolId) {
+        return classRepository.findBySchoolId(schoolId);
     }
 
-    public AcademicClass getClassById(Long id) {
-        return classRepository.findById(id)
+    public AcademicClass getClassById(Long id, Long schoolId) {
+        return classRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("AcademicClass", "id", id));
     }
 
-    public AcademicClass createClass(AcademicClass academicClass) {
+    public AcademicClass createClass(AcademicClass academicClass, Long schoolId) {
+        academicClass.setSchoolId(schoolId);
         return classRepository.save(academicClass);
     }
 
-    public AcademicClass updateClass(Long id, AcademicClass updated) {
-        AcademicClass existing = getClassById(id);
+    public AcademicClass updateClass(Long id, AcademicClass updated, Long schoolId) {
+        AcademicClass existing = getClassById(id, schoolId);
         existing.setName(updated.getName());
         existing.setSection(updated.getSection());
         existing.setDescription(updated.getDescription());
         return classRepository.save(existing);
     }
 
-    public void deleteClass(Long id) {
-        if (!classRepository.existsById(id)) {
+    public void deleteClass(Long id, Long schoolId) {
+        if (classRepository.findByIdAndSchoolId(id, schoolId).isEmpty()) {
             throw new ResourceNotFoundException("AcademicClass", "id", id);
         }
         classRepository.deleteById(id);
@@ -72,12 +73,12 @@ public class AcademicService {
 
     // ---- Subject ----
 
-    public List<Subject> getAllSubjects() {
-        return subjectRepository.findAll();
+    public List<Subject> getAllSubjects(Long schoolId) {
+        return subjectRepository.findBySchoolId(schoolId);
     }
 
-    public Subject getSubjectById(Long id) {
-        return subjectRepository.findById(id)
+    public Subject getSubjectById(Long id, Long schoolId) {
+        return subjectRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", id));
     }
 
@@ -86,38 +87,39 @@ public class AcademicService {
     }
 
     @Transactional
-    public Subject createSubject(Subject subject) {
+    public Subject createSubject(Subject subject, Long schoolId) {
         if (subject.getName() == null || subject.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Subject name is required.");
         }
         String trimmedName = subject.getName().trim();
         String trimmedCode = subject.getCode() != null ? subject.getCode().trim() : null;
 
-        if (subjectRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, null)) {
+        if (subjectRepository.existsByNameIgnoreCaseAndSchoolIdAndIdNot(trimmedName, schoolId, null)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Subject name '" + trimmedName + "' already exists.");
         }
-        if (trimmedCode != null && !trimmedCode.isEmpty() && subjectRepository.existsByCodeIgnoreCaseAndIdNot(trimmedCode, null)) {
+        if (trimmedCode != null && !trimmedCode.isEmpty() && subjectRepository.existsByCodeIgnoreCaseAndSchoolIdAndIdNot(trimmedCode, schoolId, null)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Subject code '" + trimmedCode + "' already exists.");
         }
 
         subject.setName(trimmedName);
         subject.setCode(trimmedCode);
+        subject.setSchoolId(schoolId);
         return subjectRepository.save(subject);
     }
 
     @Transactional
-    public Subject updateSubject(Long id, Subject updated) {
-        Subject existing = getSubjectById(id);
+    public Subject updateSubject(Long id, Subject updated, Long schoolId) {
+        Subject existing = getSubjectById(id, schoolId);
         if (updated.getName() == null || updated.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Subject name is required.");
         }
         String trimmedName = updated.getName().trim();
         String trimmedCode = updated.getCode() != null ? updated.getCode().trim() : null;
 
-        if (subjectRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, id)) {
+        if (subjectRepository.existsByNameIgnoreCaseAndSchoolIdAndIdNot(trimmedName, schoolId, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Subject name '" + trimmedName + "' already exists.");
         }
-        if (trimmedCode != null && !trimmedCode.isEmpty() && subjectRepository.existsByCodeIgnoreCaseAndIdNot(trimmedCode, id)) {
+        if (trimmedCode != null && !trimmedCode.isEmpty() && subjectRepository.existsByCodeIgnoreCaseAndSchoolIdAndIdNot(trimmedCode, schoolId, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Subject code '" + trimmedCode + "' already exists.");
         }
 
@@ -135,9 +137,9 @@ public class AcademicService {
     }
 
     @Transactional
-    public void deleteSubject(Long id) {
-        Subject existing = getSubjectById(id);
-        if (markRepository.existsBySubjectIdOrSubjectName(id, existing.getName())) {
+    public void deleteSubject(Long id, Long schoolId) {
+        Subject existing = getSubjectById(id, schoolId);
+        if (markRepository.existsBySubjectIdOrSubjectNameAndSchoolId(id, existing.getName(), schoolId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This subject cannot be deleted because marks already exist for this subject.");
         }
@@ -146,22 +148,22 @@ public class AcademicService {
 
     // ---- Exam ----
 
-    public List<Exam> getAllExams() {
-        return examRepository.findAll();
+    public List<Exam> getAllExams(Long schoolId) {
+        return examRepository.findBySchoolId(schoolId);
     }
 
-    public Exam getExamById(Long id) {
-        return examRepository.findById(id)
+    public Exam getExamById(Long id, Long schoolId) {
+        return examRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Exam", "id", id));
     }
 
     @Transactional
-    public Exam createExam(Exam exam) {
+    public Exam createExam(Exam exam, Long schoolId) {
         if (exam.getName() == null || exam.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Exam name is required.");
         }
         String trimmedName = exam.getName().trim();
-        if (examRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, null)) {
+        if (examRepository.existsByNameIgnoreCaseAndSchoolIdAndIdNot(trimmedName, schoolId, null)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Exam name '" + trimmedName + "' already exists.");
         }
 
@@ -169,17 +171,18 @@ public class AcademicService {
         if (exam.getTotalMarks() == null || exam.getTotalMarks() <= 0) {
             exam.setTotalMarks(100);
         }
+        exam.setSchoolId(schoolId);
         return examRepository.save(exam);
     }
 
     @Transactional
-    public Exam updateExam(Long id, Exam updated) {
-        Exam existing = getExamById(id);
+    public Exam updateExam(Long id, Exam updated, Long schoolId) {
+        Exam existing = getExamById(id, schoolId);
         if (updated.getName() == null || updated.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Exam name is required.");
         }
         String trimmedName = updated.getName().trim();
-        if (examRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, id)) {
+        if (examRepository.existsByNameIgnoreCaseAndSchoolIdAndIdNot(trimmedName, schoolId, id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Exam name '" + trimmedName + "' already exists.");
         }
 
@@ -203,9 +206,9 @@ public class AcademicService {
     }
 
     @Transactional
-    public void deleteExam(Long id) {
-        Exam existing = getExamById(id);
-        if (markRepository.existsByExamIdOrExamName(id, existing.getName())) {
+    public void deleteExam(Long id, Long schoolId) {
+        Exam existing = getExamById(id, schoolId);
+        if (markRepository.existsByExamIdOrExamNameAndSchoolId(id, existing.getName(), schoolId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This exam cannot be deleted because marks already exist for this exam.");
         }
@@ -215,31 +218,31 @@ public class AcademicService {
 
     // ---- Mark ----
 
-    public List<com.school.academic.dto.MarkDTO> searchMarks(String className, String section, String examName, String subjectName) {
-        return markRepository.searchMarks(className, section, examName, subjectName).stream()
+    public List<com.school.academic.dto.MarkDTO> searchMarks(String className, String section, String examName, String subjectName, Long schoolId) {
+        return markRepository.searchMarks(className, section, examName, subjectName, schoolId).stream()
                 .map(this::toMarkDTO)
                 .toList();
     }
 
-    public List<com.school.academic.dto.MarkDTO> getMarksByStudent(Long studentId) {
-        return markRepository.findByStudentId(studentId).stream()
+    public List<com.school.academic.dto.MarkDTO> getMarksByStudent(Long studentId, Long schoolId) {
+        return markRepository.findByStudentIdAndSchoolId(studentId, schoolId).stream()
                 .map(this::toMarkDTO)
                 .toList();
     }
 
-    public List<com.school.academic.dto.MarkDTO> getMarksByExam(Long examId) {
-        return markRepository.findByExamId(examId).stream()
+    public List<com.school.academic.dto.MarkDTO> getMarksByExam(Long examId, Long schoolId) {
+        return markRepository.findByExamIdAndSchoolId(examId, schoolId).stream()
                 .map(this::toMarkDTO)
                 .toList();
     }
 
-    public com.school.academic.dto.MarkDTO getMarkById(Long id) {
-        Mark mark = markRepository.findById(id)
+    public com.school.academic.dto.MarkDTO getMarkById(Long id, Long schoolId) {
+        Mark mark = markRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mark", "id", id));
         return toMarkDTO(mark);
     }
 
-    public com.school.academic.dto.MarkDTO saveOrUpdateMark(com.school.academic.dto.MarkDTO dto) {
+    public com.school.academic.dto.MarkDTO saveOrUpdateMark(com.school.academic.dto.MarkDTO dto, Long schoolId) {
         if (dto.getStudentId() == null) {
             throw new IllegalArgumentException("Student ID is required.");
         }
@@ -258,13 +261,13 @@ public class AcademicService {
 
         // Check for existing mark for Student + Subject + Exam (upsert)
         java.util.Optional<Mark> existingOpt = dto.getId() != null ?
-                markRepository.findById(dto.getId()) :
+                markRepository.findByIdAndSchoolId(dto.getId(), schoolId) :
                 markRepository.findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
                         dto.getStudentId(), dto.getSubjectName(), dto.getExamName());
 
         Long resolvedExamId = dto.getExamId();
         if (resolvedExamId == null && dto.getExamName() != null) {
-            resolvedExamId = examRepository.findAll().stream()
+            resolvedExamId = examRepository.findBySchoolId(schoolId).stream()
                     .filter(e -> e.getName() != null && e.getName().equalsIgnoreCase(dto.getExamName().trim()))
                     .map(Exam::getId)
                     .findFirst()
@@ -273,7 +276,7 @@ public class AcademicService {
 
         Long resolvedSubjectId = dto.getSubjectId();
         if (resolvedSubjectId == null && dto.getSubjectName() != null) {
-            resolvedSubjectId = subjectRepository.findAll().stream()
+            resolvedSubjectId = subjectRepository.findBySchoolId(schoolId).stream()
                     .filter(s -> s.getName() != null && s.getName().equalsIgnoreCase(dto.getSubjectName().trim()))
                     .map(Subject::getId)
                     .findFirst()
@@ -311,6 +314,7 @@ public class AcademicService {
                     .remarks(dto.getRemarks())
                     .createdAt(java.time.LocalDateTime.now())
                     .updatedAt(java.time.LocalDateTime.now())
+                    .schoolId(schoolId)
                     .build();
         }
 
@@ -318,7 +322,7 @@ public class AcademicService {
         return toMarkDTO(saved);
     }
 
-    public List<com.school.academic.dto.MarkDTO> saveBatchMarks(com.school.academic.dto.MarkBatchRequest request) {
+    public List<com.school.academic.dto.MarkDTO> saveBatchMarks(com.school.academic.dto.MarkBatchRequest request, Long schoolId) {
         if (request.getMarks() == null || request.getMarks().isEmpty()) {
             return java.util.Collections.emptyList();
         }
@@ -343,14 +347,14 @@ public class AcademicService {
             }
 
             if (dto.getMarksObtained() != null) {
-                results.add(saveOrUpdateMark(dto));
+                results.add(saveOrUpdateMark(dto, schoolId));
             }
         }
         return results;
     }
 
-    public com.school.academic.dto.MarkDTO updateMark(Long id, com.school.academic.dto.MarkDTO updated) {
-        Mark existing = markRepository.findById(id)
+    public com.school.academic.dto.MarkDTO updateMark(Long id, com.school.academic.dto.MarkDTO updated, Long schoolId) {
+        Mark existing = markRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mark", "id", id));
 
         double maxMarks = (updated.getMaxMarks() != null && updated.getMaxMarks() > 0) ?
@@ -372,13 +376,26 @@ public class AcademicService {
         return toMarkDTO(saved);
     }
 
-    public void deleteMark(Long id) {
-        if (!markRepository.existsById(id)) {
+    public void deleteMark(Long id, Long schoolId) {
+        if (markRepository.findByIdAndSchoolId(id, schoolId).isEmpty()) {
             throw new ResourceNotFoundException("Mark", "id", id);
         }
         markRepository.deleteById(id);
     }
 
+    /** Scoped variant for an external (ADMIN, JWT-bearing) caller. */
+    @Transactional
+    public long deleteMarksByStudent(Long studentId, Long schoolId) {
+        return markRepository.deleteByStudentIdAndSchoolId(studentId, schoolId);
+    }
+
+    /**
+     * Unscoped variant for the internal cleanup call from student-service (no Authorization
+     * header, by the codebase's existing internal-call convention) when a student is deleted.
+     * Safe without a schoolId: studentId is already a globally-unique id, and student-service's
+     * own delete path (see StudentService.deleteStudent) is itself schoolId-scoped, so this only
+     * ever fires for a student that genuinely belonged to the deleting admin's own school.
+     */
     @Transactional
     public long deleteMarksByStudent(Long studentId) {
         return markRepository.deleteByStudentId(studentId);
@@ -407,20 +424,21 @@ public class AcademicService {
 
     // ---- Homework ----
 
-    public List<Homework> getAllHomework() {
-        return homeworkRepository.findAll();
+    public List<Homework> getAllHomework(Long schoolId) {
+        return homeworkRepository.findBySchoolId(schoolId);
     }
 
-    public List<Homework> getHomeworkByClass(String className) {
-        return homeworkRepository.findByClassName(className);
+    public List<Homework> getHomeworkByClass(String className, Long schoolId) {
+        return homeworkRepository.findByClassNameAndSchoolId(className, schoolId);
     }
 
-    public Homework createHomework(Homework homework) {
+    public Homework createHomework(Homework homework, Long schoolId) {
+        homework.setSchoolId(schoolId);
         return homeworkRepository.save(homework);
     }
 
-    public Homework updateHomework(Long id, Homework updated) {
-        Homework existing = homeworkRepository.findById(id)
+    public Homework updateHomework(Long id, Homework updated, Long schoolId) {
+        Homework existing = homeworkRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Homework", "id", id));
         existing.setTitle(updated.getTitle());
         existing.setDescription(updated.getDescription());
@@ -431,8 +449,8 @@ public class AcademicService {
         return homeworkRepository.save(existing);
     }
 
-    public void deleteHomework(Long id) {
-        if (!homeworkRepository.existsById(id)) {
+    public void deleteHomework(Long id, Long schoolId) {
+        if (homeworkRepository.findByIdAndSchoolId(id, schoolId).isEmpty()) {
             throw new ResourceNotFoundException("Homework", "id", id);
         }
         homeworkRepository.deleteById(id);
@@ -440,14 +458,14 @@ public class AcademicService {
 
     // ---- Board Results ----
 
-    public List<BoardResultDTO> getAllBoardResults() {
-        return boardResultRepository.findAllByOrderByCreatedAtDesc().stream()
+    public List<BoardResultDTO> getAllBoardResults(Long schoolId) {
+        return boardResultRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
                 .map(this::toBoardResultDTO)
                 .toList();
     }
 
     @Transactional
-    public BoardResultDTO createBoardResult(BoardResultDTO dto) {
+    public BoardResultDTO createBoardResult(BoardResultDTO dto, Long schoolId) {
         BoardResult result = BoardResult.builder()
                 .studentId(dto.getStudentId())
                 .admissionNumber(dto.getAdmissionNumber())
@@ -457,14 +475,15 @@ public class AcademicService {
                 .academicYear(dto.getAcademicYear())
                 .subjects(toSubjectEntities(dto.getSubjects()))
                 .totalMarks(sumMarks(dto.getSubjects()))
+                .schoolId(schoolId)
                 .build();
         BoardResult saved = boardResultRepository.save(result);
         return toBoardResultDTO(saved);
     }
 
     @Transactional
-    public BoardResultDTO updateBoardResult(Long id, BoardResultDTO dto) {
-        BoardResult existing = boardResultRepository.findById(id)
+    public BoardResultDTO updateBoardResult(Long id, BoardResultDTO dto, Long schoolId) {
+        BoardResult existing = boardResultRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("BoardResult", "id", id));
         existing.setBoard(dto.getBoard());
         existing.setStandard(dto.getStandard());
@@ -476,8 +495,8 @@ public class AcademicService {
         return toBoardResultDTO(saved);
     }
 
-    public void deleteBoardResult(Long id) {
-        if (!boardResultRepository.existsById(id)) {
+    public void deleteBoardResult(Long id, Long schoolId) {
+        if (boardResultRepository.findByIdAndSchoolId(id, schoolId).isEmpty()) {
             throw new ResourceNotFoundException("BoardResult", "id", id);
         }
         boardResultRepository.deleteById(id);
