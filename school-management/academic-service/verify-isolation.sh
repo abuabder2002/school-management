@@ -167,6 +167,36 @@ print('leaked' if 'IsoScheduleSubjectX' in subs else 'isolated')
 check "ClassSchedule: School 2 does not see School 1's new schedule entry" "$SCHEDULE_LEAKED" "isolated"
 curl -s -X DELETE "$GATEWAY/api/academic/schedule/$SCHEDULE_ID" -H "Authorization: Bearer $TOKEN_S1" > /dev/null
 
+# --- Task 4: inter-service call to student-service (getAllStudents) carries schoolId ---
+# MarkBulkUploadService.generateTemplate() calls studentServiceClient.getAllStudents(schoolId)
+# to pre-fill the mark-sheet template with a class's roster. Create a student under School 1,
+# request the template as School 2's admin, and confirm School 1's student is not pre-filled in.
+
+S1_ROSTER_STUDENT=$(curl -s -X POST "$GATEWAY/api/students" \
+  -H "Authorization: Bearer $TOKEN_S1" -H "Content-Type: application/json" \
+  -d '{"admissionNumber":"ISO-ROSTER-001","name":"Iso Roster Student","className":"Class 4","fatherName":"Roster Father"}')
+S1_ROSTER_ID=$(echo "$S1_ROSTER_STUDENT" | jpath id)
+
+S2_SUBJECT=$(curl -s -X POST "$GATEWAY/api/academic/subjects" -H "Authorization: Bearer $TOKEN_S2" -H "Content-Type: application/json" -d '{"name":"IsoRosterSubject"}')
+S2_SUBJECT_ID=$(echo "$S2_SUBJECT" | jpath id)
+
+TEMPLATE_XLSX=$(python3 -c "import tempfile; f=tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False); f.close(); print(f.name)")
+curl -s "$GATEWAY/api/academic/marks/bulk-template?className=Class%204&subjectIds=$S2_SUBJECT_ID" \
+  -H "Authorization: Bearer $TOKEN_S2" -o "$TEMPLATE_XLSX"
+
+ROSTER_LEAKED=$(python3 -c "
+import sys, openpyxl
+wb = openpyxl.load_workbook(sys.argv[1])
+ws = wb.active
+names = [row[2].value for row in ws.iter_rows(min_row=2) if row[2].value]
+print('leaked' if 'Iso Roster Student' in names else 'isolated')
+" "$TEMPLATE_XLSX" 2>/dev/null)
+check "Mark-sheet template (School 2) does not pre-fill School 1's student" "$ROSTER_LEAKED" "isolated"
+
+rm -f "$TEMPLATE_XLSX"
+curl -s -X DELETE "$GATEWAY/api/students/$S1_ROSTER_ID" -H "Authorization: Bearer $TOKEN_S1" > /dev/null
+curl -s -X DELETE "$GATEWAY/api/academic/subjects/$S2_SUBJECT_ID" -H "Authorization: Bearer $TOKEN_S2" > /dev/null
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

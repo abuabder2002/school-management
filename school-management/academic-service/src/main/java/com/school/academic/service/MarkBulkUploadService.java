@@ -104,7 +104,7 @@ public class MarkBulkUploadService {
         String targetKey = allClasses ? null : classKey(className);
 
         List<StudentInfoDTO> students = new ArrayList<>();
-        for (StudentInfoDTO s : studentServiceClient.getAllStudents()) {
+        for (StudentInfoDTO s : studentServiceClient.getAllStudents(schoolId)) {
             if (Boolean.FALSE.equals(s.getIsActive())) continue;
             if (targetKey != null && !targetKey.equals(classKey(s.getClassName()))) continue;
             students.add(s);
@@ -242,7 +242,7 @@ public class MarkBulkUploadService {
         double maxMarks = maxMarksOf(exam);
 
         // Students indexed for matching
-        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents();
+        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents(schoolId);
         Map<String, StudentInfoDTO> studentByAdmission = new HashMap<>();
         for (StudentInfoDTO s : allStudents) {
             if (s.getAdmissionNumber() != null && !s.getAdmissionNumber().isBlank()) {
