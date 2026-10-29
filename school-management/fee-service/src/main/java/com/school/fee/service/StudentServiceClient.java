@@ -28,12 +28,12 @@ public class StudentServiceClient {
     private static final String LB_BASE = "http://STUDENT-SERVICE/api/students";
     private static final String DIRECT_BASE = "http://localhost:8082/api/students";
 
-    public List<String> getDistinctClasses() {
+    public List<String> getDistinctClasses(Long schoolId) {
         try {
-            return fetchClasses(loadBalancedRestTemplate, URI.create(LB_BASE + "/classes"));
+            return fetchClasses(loadBalancedRestTemplate, URI.create(LB_BASE + "/classes?schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchClasses(directRestTemplate, URI.create(DIRECT_BASE + "/classes"));
+                return fetchClasses(directRestTemplate, URI.create(DIRECT_BASE + "/classes?schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch classes: {}", e2.getMessage());
                 return Collections.emptyList();
@@ -41,12 +41,12 @@ public class StudentServiceClient {
         }
     }
 
-    public Map<String, List<StudentInfoDTO>> getActiveStudentsGroupedByClass() {
+    public Map<String, List<StudentInfoDTO>> getActiveStudentsGroupedByClass(Long schoolId) {
         try {
-            return fetchGroupedStudents(loadBalancedRestTemplate, URI.create(LB_BASE + "/active-by-class"));
+            return fetchGroupedStudents(loadBalancedRestTemplate, URI.create(LB_BASE + "/active-by-class?schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchGroupedStudents(directRestTemplate, URI.create(DIRECT_BASE + "/active-by-class"));
+                return fetchGroupedStudents(directRestTemplate, URI.create(DIRECT_BASE + "/active-by-class?schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch grouped active students: {}", e2.getMessage());
                 return Collections.emptyMap();
@@ -54,13 +54,13 @@ public class StudentServiceClient {
         }
     }
 
-    public List<StudentInfoDTO> getActiveStudentsByClass(String className) {
+    public List<StudentInfoDTO> getActiveStudentsByClass(String className, Long schoolId) {
         String encodedClass = org.springframework.web.util.UriUtils.encodePathSegment(className, StandardCharsets.UTF_8);
         try {
-            return fetchStudentsList(loadBalancedRestTemplate, URI.create(LB_BASE + "/class/" + encodedClass + "/active"));
+            return fetchStudentsList(loadBalancedRestTemplate, URI.create(LB_BASE + "/class/" + encodedClass + "/active?schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchStudentsList(directRestTemplate, URI.create(DIRECT_BASE + "/class/" + encodedClass + "/active"));
+                return fetchStudentsList(directRestTemplate, URI.create(DIRECT_BASE + "/class/" + encodedClass + "/active?schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch active students for {}: {}", className, e2.getMessage());
                 return Collections.emptyList();
@@ -68,12 +68,12 @@ public class StudentServiceClient {
         }
     }
 
-    public List<StudentInfoDTO> getAllStudents() {
+    public List<StudentInfoDTO> getAllStudents(Long schoolId) {
         try {
-            return fetchAllStudentsPaged(loadBalancedRestTemplate, URI.create(LB_BASE + "?page=1&pageSize=10000"));
+            return fetchAllStudentsPaged(loadBalancedRestTemplate, URI.create(LB_BASE + "?page=1&pageSize=10000&schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchAllStudentsPaged(directRestTemplate, URI.create(DIRECT_BASE + "?page=1&pageSize=10000"));
+                return fetchAllStudentsPaged(directRestTemplate, URI.create(DIRECT_BASE + "?page=1&pageSize=10000&schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch all students: {}", e2.getMessage());
                 return Collections.emptyList();

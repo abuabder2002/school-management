@@ -32,13 +32,13 @@ public class BulkUploadValidationTest {
         StudentInfoDTO ramya = StudentInfoDTO.builder().id(103L).name("Ramya").admissionNumber("ADM-03").className("Class 10").isActive(false).build(); // INACTIVE
         StudentInfoDTO david = StudentInfoDTO.builder().id(104L).name("David").admissionNumber("ADM-04").className("Class 9").isActive(true).build(); // CLASS 9
 
-        Mockito.when(mockClient.getAllStudents()).thenReturn(List.of(abu, mubeen, ramya, david));
-        Mockito.when(mockClient.getActiveStudentsByClass("Class 10")).thenReturn(List.of(abu, mubeen));
+        Mockito.when(mockClient.getAllStudents(1L)).thenReturn(List.of(abu, mubeen, ramya, david));
+        Mockito.when(mockClient.getActiveStudentsByClass("Class 10", 1L)).thenReturn(List.of(abu, mubeen));
 
         FeeExcelService service = new FeeExcelService(mockClient, mockRepo, mockPaymentRepo);
 
         // 1. Test Template Generation
-        byte[] tplBytes = service.generateTemplate("Class 10");
+        byte[] tplBytes = service.generateTemplate("Class 10", 1L);
         Assertions.assertTrue(tplBytes.length > 0);
 
         // 2. Build workbook with intentional errors:
@@ -99,7 +99,7 @@ public class BulkUploadValidationTest {
             wb.write(out);
 
             MockMultipartFile mockFile = new MockMultipartFile("file", "test.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", out.toByteArray());
-            BulkUploadBillingResult result = service.processBulkUpload("Class 10", mockFile);
+            BulkUploadBillingResult result = service.processBulkUpload("Class 10", mockFile, 1L);
 
             // Assertions
             Assertions.assertFalse(result.isSuccess(), "Upload with validation errors should fail atomically");

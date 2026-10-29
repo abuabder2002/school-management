@@ -88,7 +88,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<ClassBillingSummaryDTO>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        List<ClassBillingSummaryDTO> summaries = feeService.getClassBillingSummaries();
+        List<ClassBillingSummaryDTO> summaries = feeService.getClassBillingSummaries(resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(summaries));
     }
 
@@ -99,7 +99,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<StudentBillingRowDTO>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        List<StudentBillingRowDTO> rows = feeService.getStudentBillingForClass(className);
+        List<StudentBillingRowDTO> rows = feeService.getStudentBillingForClass(className, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(rows));
     }
 
@@ -116,7 +116,7 @@ public class FeeController {
             targetClass = "ALL";
         }
         try {
-            byte[] excelBytes = feeExcelService.generateTemplate(targetClass);
+            byte[] excelBytes = feeExcelService.generateTemplate(targetClass, resolveSchoolId(authHeader));
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
@@ -142,7 +142,7 @@ public class FeeController {
         if (denied != null) return denied;
         String targetClass = (className != null && !className.trim().isEmpty()) ? className.trim() : "ALL";
         try {
-            BulkUploadBillingResult result = feeExcelService.processBulkUpload(targetClass, file);
+            BulkUploadBillingResult result = feeExcelService.processBulkUpload(targetClass, file, resolveSchoolId(authHeader));
             return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
         } catch (Exception e) {
             log.error("Bulk billing upload failed for {}: {}", targetClass, e.getMessage());
@@ -158,7 +158,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<FeeDTO>>> denied = denyUnlessAdminOrOwnChild(authHeader, studentId);
         if (denied != null) return denied;
-        List<FeeDTO> fees = feeService.getFeesByStudent(studentId);
+        List<FeeDTO> fees = feeService.getFeesByStudent(studentId, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(fees));
     }
 
@@ -169,7 +169,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<FeeDTO>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        FeeDTO saved = feeService.createOrUpdateFee(dto);
+        FeeDTO saved = feeService.createOrUpdateFee(dto, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Billing record saved successfully", saved));
     }
@@ -181,7 +181,7 @@ public class FeeController {
                                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<FeeDTO>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        FeeDTO updated = feeService.updateFee(id, dto);
+        FeeDTO updated = feeService.updateFee(id, dto, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Fee record updated", updated));
     }
 
@@ -193,7 +193,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Payment>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        Payment recorded = feeService.recordPayment(feeId, payment);
+        Payment recorded = feeService.recordPayment(feeId, payment, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Payment recorded", recorded));
     }
@@ -205,7 +205,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<Payment>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        List<Payment> payments = feeService.getPaymentsByFee(feeId);
+        List<Payment> payments = feeService.getPaymentsByFee(feeId, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 
@@ -216,7 +216,7 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<Payment>>> denied = denyUnlessAdminOrOwnChild(authHeader, studentId);
         if (denied != null) return denied;
-        List<Payment> payments = feeService.getPaymentsByStudent(studentId);
+        List<Payment> payments = feeService.getPaymentsByStudent(studentId, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 
@@ -227,7 +227,13 @@ public class FeeController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<RecentPaymentDTO>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        List<RecentPaymentDTO> payments = feeService.getRecentPayments(limit);
+        List<RecentPaymentDTO> payments = feeService.getRecentPayments(limit, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(payments));
+    }
+
+    private Long resolveSchoolId(String authHeader) {
+        if (authHeader == null) return null;
+        String token = jwtDecoder.extractRaw(authHeader);
+        return token != null ? jwtDecoder.getSchoolId(token) : null;
     }
 }

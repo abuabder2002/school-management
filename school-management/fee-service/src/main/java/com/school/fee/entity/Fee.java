@@ -79,4 +79,6 @@ public class Fee {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    private Long schoolId;
 }

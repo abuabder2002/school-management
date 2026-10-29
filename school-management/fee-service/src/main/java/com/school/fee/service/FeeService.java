@@ -38,10 +38,10 @@ public class FeeService {
      * Get class-wise billing summaries for all configured/existing classes.
      * Calculated dynamically from active students and their fee records.
      */
-    public List<ClassBillingSummaryDTO> getClassBillingSummaries() {
+    public List<ClassBillingSummaryDTO> getClassBillingSummaries(Long schoolId) {
         Map<String, List<StudentInfoDTO>> groupedStudents;
         try {
-            groupedStudents = studentServiceClient.getActiveStudentsGroupedByClass();
+            groupedStudents = studentServiceClient.getActiveStudentsGroupedByClass(schoolId);
         } catch (Exception e) {
             log.warn("Failed to fetch active students grouped by class: {}", e.getMessage());
             groupedStudents = Collections.emptyMap();
@@ -59,7 +59,7 @@ public class FeeService {
 
         if (classSet.isEmpty()) {
             try {
-                List<String> distinctClasses = studentServiceClient.getDistinctClasses();
+                List<String> distinctClasses = studentServiceClient.getDistinctClasses(schoolId);
                 if (distinctClasses != null) {
                     for (String c : distinctClasses) {
                         if (c != null && !c.trim().isEmpty()) {
@@ -75,7 +75,7 @@ public class FeeService {
         if (classSet.isEmpty()) {
             // Fallback: distinct classes from fees table
             try {
-                feeRepository.findAll().stream()
+                feeRepository.findBySchoolId(schoolId).stream()
                         .map(Fee::getClassName)
                         .filter(c -> c != null && !c.trim().isEmpty())
                         .map(String::trim)
@@ -95,7 +95,7 @@ public class FeeService {
             List<StudentInfoDTO> activeStudents = groupedStudents.getOrDefault(className, Collections.emptyList());
             if (activeStudents == null || activeStudents.isEmpty()) {
                 try {
-                    activeStudents = studentServiceClient.getActiveStudentsByClass(className);
+                    activeStudents = studentServiceClient.getActiveStudentsByClass(className, schoolId);
                 } catch (Exception e) {
                     log.warn("Failed to fetch active students for class {}: {}", className, e.getMessage());
                     activeStudents = Collections.emptyList();
@@ -119,7 +119,7 @@ public class FeeService {
 
             if (!activeStudentIds.isEmpty()) {
                 try {
-                    List<Fee> fees = feeRepository.findByStudentIdIn(activeStudentIds);
+                    List<Fee> fees = feeRepository.findByStudentIdInAndSchoolId(activeStudentIds, schoolId);
                     if (fees != null) {
                         for (Fee fee : fees) {
                             if (fee.getTotalAmount() != null) totalAmount = totalAmount.add(fee.getTotalAmount());
@@ -133,7 +133,7 @@ public class FeeService {
             } else {
                 // If there are no active students found via client, check if fees exist by className
                 try {
-                    List<Fee> classFees = feeRepository.findByClassName(className);
+                    List<Fee> classFees = feeRepository.findByClassNameAndSchoolId(className, schoolId);
                     if (classFees != null && !classFees.isEmpty()) {
                         totalStudents = classFees.stream().map(Fee::getStudentId).filter(Objects::nonNull).distinct().count();
                         for (Fee fee : classFees) {
@@ -165,10 +165,10 @@ public class FeeService {
      * Strictly includes only ACTIVE students belonging to this class,
      * with graceful fallback to existing class fees if student directory service is unavailable.
      */
-    public List<StudentBillingRowDTO> getStudentBillingForClass(String className) {
+    public List<StudentBillingRowDTO> getStudentBillingForClass(String className, Long schoolId) {
         List<StudentInfoDTO> activeStudents;
         try {
-            activeStudents = studentServiceClient.getActiveStudentsByClass(className);
+            activeStudents = studentServiceClient.getActiveStudentsByClass(className, schoolId);
         } catch (Exception e) {
             log.warn("Failed to fetch active students for {}: {}", className, e.getMessage());
             activeStudents = Collections.emptyList();
@@ -180,7 +180,7 @@ public class FeeService {
         // If no active students returned from service client, fallback to students found in fees table
         if (activeStudents.isEmpty()) {
             try {
-                List<Fee> classFees = feeRepository.findByClassName(className);
+                List<Fee> classFees = feeRepository.findByClassNameAndSchoolId(className, schoolId);
                 if (classFees != null && !classFees.isEmpty()) {
                     activeStudents = classFees.stream()
                             .filter(f -> f.getStudentId() != null)
@@ -209,7 +209,7 @@ public class FeeService {
         Map<Long, Fee> feeMap = new HashMap<>();
         if (!studentIds.isEmpty()) {
             try {
-                List<Fee> fees = feeRepository.findByStudentIdIn(studentIds);
+                List<Fee> fees = feeRepository.findByStudentIdInAndSchoolId(studentIds, schoolId);
                 if (fees != null) {
                     for (Fee f : fees) {
                         feeMap.put(f.getStudentId(), f);
@@ -294,13 +294,13 @@ public class FeeService {
      * Enforces consistency: Total = Terms + Bus + Exam, Outstanding = Total - Paid.
      */
     @Transactional
-    public FeeDTO createOrUpdateFee(FeeDTO dto) {
+    public FeeDTO createOrUpdateFee(FeeDTO dto, Long schoolId) {
         if (dto.getStudentId() == null) {
             throw new BadRequestException("Student ID is required.");
         }
 
         // Validate student existence and active status in Student Portal
-        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents();
+        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents(schoolId);
         StudentInfoDTO student = null;
         if (allStudents != null) {
             student = allStudents.stream()
@@ -357,7 +357,7 @@ public class FeeService {
 
         FeeStatus status = determineStatus(total, paid);
 
-        Fee fee = feeRepository.findFirstByStudentId(dto.getStudentId()).orElse(null);
+        Fee fee = feeRepository.findFirstByStudentIdAndSchoolId(dto.getStudentId(), schoolId).orElse(null);
 
         if (fee == null) {
             fee = Fee.builder()
@@ -377,6 +377,7 @@ public class FeeService {
                     .description(dto.getDescription() != null ? dto.getDescription() : "Tuition & Fees")
                     .academicYear(dto.getAcademicYear() != null ? dto.getAcademicYear() : "2026-2027")
                     .dueDate(dto.getDueDate() != null ? dto.getDueDate() : LocalDate.now().plusMonths(1))
+                    .schoolId(schoolId)
                     .build();
         } else {
             if (dto.getAdmissionNumber() != null) fee.setAdmissionNumber(dto.getAdmissionNumber());
@@ -409,6 +410,7 @@ public class FeeService {
                         .paymentDate(LocalDate.now())
                         .paymentMethod("ONLINE")
                         .note("Initial payment installment")
+                        .schoolId(schoolId)
                         .build();
                 paymentRepository.save(initialPayment);
             }
@@ -419,14 +421,14 @@ public class FeeService {
         return toDTO(saved);
     }
 
-    public List<FeeDTO> getFeesByStudent(Long studentId) {
-        return feeRepository.findByStudentId(studentId).stream()
+    public List<FeeDTO> getFeesByStudent(Long studentId, Long schoolId) {
+        return feeRepository.findByStudentIdAndSchoolId(studentId, schoolId).stream()
                 .map(this::toDTO)
                 .toList();
     }
 
-    public FeeDTO updateFee(Long id, FeeDTO dto) {
-        Fee existing = feeRepository.findById(id)
+    public FeeDTO updateFee(Long id, FeeDTO dto, Long schoolId) {
+        Fee existing = feeRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee", "id", id));
 
         BigDecimal t1 = dto.getTermFees1() != null ? dto.getTermFees1() : (existing.getTermFees1() != null ? existing.getTermFees1() : BigDecimal.ZERO);
@@ -467,12 +469,13 @@ public class FeeService {
      * Automatically updates paidAmount, pendingAmount, and status on the fee.
      */
     @Transactional
-    public Payment recordPayment(Long feeId, Payment payment) {
-        Fee fee = feeRepository.findById(feeId)
+    public Payment recordPayment(Long feeId, Payment payment, Long schoolId) {
+        Fee fee = feeRepository.findByIdAndSchoolId(feeId, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Fee", "id", feeId));
 
         payment.setFeeId(feeId);
         payment.setStudentId(fee.getStudentId());
+        payment.setSchoolId(schoolId);
         Payment saved = paymentRepository.save(payment);
 
         // Update fee totals
@@ -489,25 +492,29 @@ public class FeeService {
         return saved;
     }
 
-    public List<Payment> getPaymentsByFee(Long feeId) {
+    public List<Payment> getPaymentsByFee(Long feeId, Long schoolId) {
+        // Confirms the fee belongs to the caller's school before returning its payments —
+        // feeId alone would otherwise let one school enumerate another's payment history.
+        feeRepository.findByIdAndSchoolId(feeId, schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fee", "id", feeId));
         return paymentRepository.findByFeeIdOrderByPaymentDateDesc(feeId);
     }
 
-    public List<Payment> getPaymentsByStudent(Long studentId) {
-        return paymentRepository.findByStudentIdOrderByPaymentDateDesc(studentId);
+    public List<Payment> getPaymentsByStudent(Long studentId, Long schoolId) {
+        return paymentRepository.findByStudentIdAndSchoolIdOrderByPaymentDateDesc(studentId, schoolId);
     }
 
     /**
      * Fetch recent payments with student name and class details for ERP finance management dashboard.
      */
-    public List<RecentPaymentDTO> getRecentPayments(int limit) {
+    public List<RecentPaymentDTO> getRecentPayments(int limit, Long schoolId) {
         try {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                     0,
                     limit > 0 ? limit : 10,
                     org.springframework.data.domain.Sort.by("paymentDate").descending().and(org.springframework.data.domain.Sort.by("id").descending())
             );
-            List<Payment> payments = paymentRepository.findAll(pageable).getContent();
+            List<Payment> payments = paymentRepository.findBySchoolId(schoolId, pageable).getContent();
             if (payments == null || payments.isEmpty()) {
                 return Collections.emptyList();
             }

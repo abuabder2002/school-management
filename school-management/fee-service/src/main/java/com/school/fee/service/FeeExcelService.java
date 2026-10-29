@@ -50,11 +50,11 @@ public class FeeExcelService {
      * Generate an Excel template pre-filled with active students.
      * If className is empty or "ALL", generates a multi-class template with all active students across all classes.
      */
-    public byte[] generateTemplate(String className) throws IOException {
+    public byte[] generateTemplate(String className, Long schoolId) throws IOException {
         List<StudentInfoDTO> activeStudents;
         String sheetTitle;
         if (className == null || className.isBlank() || "ALL".equalsIgnoreCase(className) || "All Classes".equalsIgnoreCase(className)) {
-            List<StudentInfoDTO> all = studentServiceClient.getAllStudents();
+            List<StudentInfoDTO> all = studentServiceClient.getAllStudents(schoolId);
             activeStudents = (all != null) ? all.stream()
                     .filter(s -> !Boolean.FALSE.equals(s.getIsActive()))
                     .sorted((a, b) -> {
@@ -65,7 +65,7 @@ public class FeeExcelService {
                     .toList() : Collections.emptyList();
             sheetTitle = "Multi-Class Billing Template";
         } else {
-            List<StudentInfoDTO> byClass = studentServiceClient.getActiveStudentsByClass(className);
+            List<StudentInfoDTO> byClass = studentServiceClient.getActiveStudentsByClass(className, schoolId);
             activeStudents = (byClass != null) ? byClass.stream()
                     .filter(s -> !Boolean.FALSE.equals(s.getIsActive()))
                     .sorted(Comparator.comparing(s -> s.getName() != null ? s.getName().trim() : ""))
@@ -82,7 +82,7 @@ public class FeeExcelService {
         Map<Long, Fee> feeMap = new HashMap<>();
         if (!studentIds.isEmpty()) {
             try {
-                List<Fee> existingFees = feeRepository.findByStudentIdIn(studentIds);
+                List<Fee> existingFees = feeRepository.findByStudentIdInAndSchoolId(studentIds, schoolId);
                 if (existingFees != null) {
                     for (Fee f : existingFees) {
                         if (f.getStudentId() != null) {
@@ -256,7 +256,7 @@ public class FeeExcelService {
      * if any row fails validation, zero records are committed.
      */
     @Transactional
-    public BulkUploadBillingResult processBulkUpload(String expectedClassName, MultipartFile file) throws IOException {
+    public BulkUploadBillingResult processBulkUpload(String expectedClassName, MultipartFile file, Long schoolId) throws IOException {
         if (file.isEmpty()) {
             return BulkUploadBillingResult.builder()
                     .success(false)
@@ -270,7 +270,7 @@ public class FeeExcelService {
                     .build();
         }
 
-        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents();
+        List<StudentInfoDTO> allStudents = studentServiceClient.getAllStudents(schoolId);
         Map<Long, StudentInfoDTO> studentByIdMap = new HashMap<>();
         Map<String, StudentInfoDTO> studentByAdmMap = new HashMap<>();
         Map<String, List<StudentInfoDTO>> studentByNameMap = new HashMap<>();
@@ -597,8 +597,10 @@ public class FeeExcelService {
             String studentClass = rec.student.getClassName();
             distinctProcessedClasses.add(studentClass);
 
-            Fee fee = feeRepository.findByStudentIdAndClassName(rec.student.getId(), studentClass)
-                    .orElse(feeRepository.findFirstByStudentId(rec.student.getId()).orElse(null));
+            Fee fee = feeRepository.findByStudentIdAndSchoolId(rec.student.getId(), schoolId).stream()
+                    .filter(f -> studentClass.equalsIgnoreCase(f.getClassName()))
+                    .findFirst()
+                    .orElse(feeRepository.findFirstByStudentIdAndSchoolId(rec.student.getId(), schoolId).orElse(null));
 
             FeeStatus status;
             if (rec.outstandingAmount.compareTo(BigDecimal.ZERO) == 0 && rec.totalAmount.compareTo(BigDecimal.ZERO) > 0) {
@@ -625,6 +627,7 @@ public class FeeExcelService {
                         .pendingAmount(rec.outstandingAmount)
                         .status(status)
                         .description("Academic Year 2026-2027 Fee")
+                        .schoolId(schoolId)
                         .build();
             } else {
                 fee.setAdmissionNumber(rec.student.getAdmissionNumber());

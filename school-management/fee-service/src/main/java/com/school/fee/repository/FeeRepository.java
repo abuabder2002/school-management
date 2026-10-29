@@ -23,4 +23,16 @@ public interface FeeRepository extends JpaRepository<Fee, Long> {
     Optional<Fee> findByStudentIdAndClassName(Long studentId, String className);
 
     List<Fee> findByStudentIdIn(Collection<Long> studentIds);
+
+    List<Fee> findByStudentIdAndSchoolId(Long studentId, Long schoolId);
+
+    Optional<Fee> findFirstByStudentIdAndSchoolId(Long studentId, Long schoolId);
+
+    List<Fee> findByClassNameAndSchoolId(String className, Long schoolId);
+
+    List<Fee> findByStudentIdInAndSchoolId(Collection<Long> studentIds, Long schoolId);
+
+    List<Fee> findBySchoolId(Long schoolId);
+
+    Optional<Fee> findByIdAndSchoolId(Long id, Long schoolId);
 }
