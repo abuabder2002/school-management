@@ -58,6 +58,14 @@ public class JwtDecoder {
         return claims.get("role", String.class);
     }
 
+    /** Extract the schoolId claim. Null for SUPER_ADMIN tokens (by design). */
+    public Long getSchoolId(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey()).build()
+                .parseClaimsJws(token).getBody();
+        return claims.get("schoolId", Long.class);
+    }
+
     /** Strips "Bearer " prefix and returns the raw token. */
     public String extractRaw(String authHeader) {
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {

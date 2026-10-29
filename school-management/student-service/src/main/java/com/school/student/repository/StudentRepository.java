@@ -55,6 +55,20 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     long countByIsActiveTrue();
     long countByIsActiveFalse();
+
+    Optional<Student> findByIdAndSchoolId(Long id, Long schoolId);
+
+    boolean existsByIdAndSchoolId(Long id, Long schoolId);
+
+    List<Student> findBySchoolId(Long schoolId);
+
+    long countBySchoolId(Long schoolId);
+    long countBySchoolIdAndIsActiveTrue(Long schoolId);
+    long countBySchoolIdAndIsActiveFalse(Long schoolId);
+
+    long deleteBySchoolId(Long schoolId);
+
+    List<Student> findByParentIdAndSchoolId(Long parentId, Long schoolId);
     // Present/Absent requires attendance repository or complex query, but I will mock it temporarily or implement it properly if attendance entity exists.
 
     default boolean isDuplicateStudent(String name, String fatherName, String motherName, String guardianName, String address, java.time.LocalDate dateOfBirth) {

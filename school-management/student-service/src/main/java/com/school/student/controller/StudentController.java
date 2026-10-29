@@ -66,6 +66,13 @@ public class StudentController {
         return denyUnlessRole(authHeader, allowedRoles);
     }
 
+    /** Resolves the caller's schoolId from an external (JWT-bearing) request. Null for an internal call or an invalid token. */
+    private Long resolveSchoolId(String authHeader) {
+        if (authHeader == null) return null;
+        String token = jwtDecoder.extractRaw(authHeader);
+        return token != null ? jwtDecoder.getSchoolId(token) : null;
+    }
+
     /** GET /api/students */
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> searchStudents(
@@ -78,23 +85,24 @@ public class StudentController {
         ResponseEntity<ApiResponse<java.util.Map<String, Object>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
 
+        Long schoolId = resolveSchoolId(authHeader);
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by("name").ascending());
-        org.springframework.data.domain.Page<StudentDTO> studentPage = studentService.searchStudents(search, className, status, pageable);
+        org.springframework.data.domain.Page<StudentDTO> studentPage = studentService.searchStudents(search, className, status, pageable, schoolId);
 
         java.util.Map<String, Object> responseData = new java.util.HashMap<>();
         responseData.put("data", studentPage.getContent());
-        
+
         java.util.Map<String, Object> pagination = new java.util.HashMap<>();
         pagination.put("page", page);
         pagination.put("pageSize", pageSize);
         pagination.put("total", studentPage.getTotalElements());
         pagination.put("totalPages", studentPage.getTotalPages());
         responseData.put("pagination", pagination);
-        
+
         // Counts
-        responseData.put("totalStudents", studentService.countTotalStudents());
-        responseData.put("activeStudents", studentService.countActiveStudents());
-        responseData.put("inactiveStudents", studentService.countInactiveStudents());
+        responseData.put("totalStudents", studentService.countTotalStudents(schoolId));
+        responseData.put("activeStudents", studentService.countActiveStudents(schoolId));
+        responseData.put("inactiveStudents", studentService.countInactiveStudents(schoolId));
 
         return ResponseEntity.ok(ApiResponse.success(responseData));
     }
@@ -105,7 +113,7 @@ public class StudentController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success(studentService.getClassStudentSummaries()));
+        return ResponseEntity.ok(ApiResponse.success(studentService.getClassStudentSummaries(resolveSchoolId(authHeader))));
     }
 
     /** GET /api/students/classes — Distinct classes existing in Student Directory */
@@ -147,6 +155,7 @@ public class StudentController {
     public ResponseEntity<ApiResponse<StudentDTO>> getStudentById(
             @PathVariable("id") Long id,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long schoolId = null;
         if (authHeader != null) {
             String token = jwtDecoder.extractRaw(authHeader);
             if (token == null || !jwtDecoder.isValidToken(token)) {
@@ -164,8 +173,9 @@ public class StudentController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("You are not authorized to view this student."));
             }
+            schoolId = jwtDecoder.getSchoolId(token);
         }
-        StudentDTO student = studentService.getStudentById(id);
+        StudentDTO student = studentService.getStudentById(id, schoolId);
         return ResponseEntity.ok(ApiResponse.success(student));
     }
 
@@ -190,7 +200,7 @@ public class StudentController {
                     .body(ApiResponse.error("Forbidden: you can only view your own children"));
         }
 
-        List<StudentDTO> students = studentService.getStudentsByParent(parentId);
+        List<StudentDTO> students = studentService.getStudentsByParent(parentId, jwtDecoder.getSchoolId(token));
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
@@ -201,7 +211,7 @@ public class StudentController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<StudentDTO>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        StudentDTO created = studentService.createStudent(dto);
+        StudentDTO created = studentService.createStudent(dto, resolveSchoolId(authHeader));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Student created successfully", created));
@@ -214,7 +224,7 @@ public class StudentController {
                                                                   @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<StudentDTO>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        StudentDTO updated = studentService.updateStudent(id, dto);
+        StudentDTO updated = studentService.updateStudent(id, dto, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Student updated successfully", updated));
     }
 
@@ -229,7 +239,7 @@ public class StudentController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Void>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        studentService.resetParentPassword(id, body.get("newPassword"));
+        studentService.resetParentPassword(id, body.get("newPassword"), resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Parent login password updated", null));
     }
 
@@ -240,7 +250,7 @@ public class StudentController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Void>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        studentService.deleteStudent(id);
+        studentService.deleteStudent(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Student deleted successfully", null));
     }
 
@@ -254,7 +264,7 @@ public class StudentController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<java.util.Map<String, Object>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        long deleted = studentService.clearAllStudents();
+        long deleted = studentService.clearAllStudents(resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("All student records cleared",
                 java.util.Map.of("deletedCount", deleted)));
     }
@@ -268,7 +278,7 @@ public class StudentController {
         if (denied != null) return denied;
         String status = statusUpdate.get("status");
         boolean isActive = "ACTIVE".equalsIgnoreCase(status);
-        StudentDTO updated = studentService.updateStudentStatus(id, isActive);
+        StudentDTO updated = studentService.updateStudentStatus(id, isActive, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Student status updated successfully", updated));
     }
 

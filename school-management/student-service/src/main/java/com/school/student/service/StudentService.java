@@ -30,8 +30,9 @@ public class StudentService {
     private final AcademicServiceClient academicServiceClient;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public Page<StudentDTO> searchStudents(String search, String className, String status, Pageable pageable) {
+    public Page<StudentDTO> searchStudents(String search, String className, String status, Pageable pageable, Long schoolId) {
         Specification<Student> spec = Specification.where(null);
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("schoolId"), schoolId));
         if (search != null && !search.isBlank()) {
             String likeSearch = "%" + search.toLowerCase().trim() + "%";
             spec = spec.and((root, query, cb) -> cb.or(
@@ -73,8 +74,8 @@ public class StudentService {
         return new org.springframework.data.domain.PageImpl<>(pageList, pageable, total);
     }
 
-    public List<java.util.Map<String, Object>> getClassStudentSummaries() {
-        List<Student> allStudents = studentRepository.findAll();
+    public List<java.util.Map<String, Object>> getClassStudentSummaries(Long schoolId) {
+        List<Student> allStudents = studentRepository.findBySchoolId(schoolId);
         java.util.Map<String, Long> countByClass = new java.util.LinkedHashMap<>();
         
         for (Student s : allStudents) {
@@ -103,9 +104,9 @@ public class StudentService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    public long countTotalStudents() { return studentRepository.count(); }
-    public long countActiveStudents() { return studentRepository.countByIsActiveTrue(); }
-    public long countInactiveStudents() { return studentRepository.countByIsActiveFalse(); }
+    public long countTotalStudents(Long schoolId) { return studentRepository.countBySchoolId(schoolId); }
+    public long countActiveStudents(Long schoolId) { return studentRepository.countBySchoolIdAndIsActiveTrue(schoolId); }
+    public long countInactiveStudents(Long schoolId) { return studentRepository.countBySchoolIdAndIsActiveFalse(schoolId); }
 
     public List<StudentDTO> getAllStudents() {
         return studentRepository.findAll().stream()
@@ -133,19 +134,19 @@ public class StudentService {
                 .collect(java.util.stream.Collectors.groupingBy(StudentDTO::getClassName));
     }
 
-    public List<StudentDTO> getStudentsByParent(Long parentId) {
-        return studentRepository.findByParentId(parentId).stream()
+    public List<StudentDTO> getStudentsByParent(Long parentId, Long schoolId) {
+        return studentRepository.findByParentIdAndSchoolId(parentId, schoolId).stream()
                 .map(this::toDTO)
                 .toList();
     }
 
-    public StudentDTO getStudentById(Long id) {
-        Student student = studentRepository.findById(id)
+    public StudentDTO getStudentById(Long id, Long schoolId) {
+        Student student = studentRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
         return toDTO(student);
     }
 
-    public StudentDTO createStudent(StudentDTO dto) {
+    public StudentDTO createStudent(StudentDTO dto, Long schoolId) {
         if (dto.getClassName() == null || dto.getClassName().isBlank()) {
             throw new BadRequestException("Class name is required");
         }
@@ -167,19 +168,20 @@ public class StudentService {
             throw new BadRequestException("A student with the same Name, Father Name, Address and DOB already exists.");
         }
         Student student = toEntity(dto);
+        student.setSchoolId(schoolId);
         Student saved = studentRepository.save(student);
         log.info("Created student: {} ({})", saved.getName(), saved.getAdmissionNumber());
         return toDTO(saved);
     }
 
-    public StudentDTO updateStudent(Long id, StudentDTO dto) {
+    public StudentDTO updateStudent(Long id, StudentDTO dto, Long schoolId) {
         if ((dto.getFatherName() == null || dto.getFatherName().isBlank()) &&
             (dto.getMotherName() == null || dto.getMotherName().isBlank()) &&
             (dto.getGuardianName() == null || dto.getGuardianName().isBlank())) {
             throw new BadRequestException("Please provide at least one Father Name, Mother Name, or Guardian Name.");
         }
 
-        Student existing = studentRepository.findById(id)
+        Student existing = studentRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
 
         // Validate Class Promotion Rule: allow current class and higher classes, reject lower classes
@@ -242,19 +244,19 @@ public class StudentService {
      * from updateStudent (which overwrites every field) so resetting a forgotten password can
      * never accidentally blank out the rest of the student's record.
      */
-    public void resetParentPassword(Long id, String newPassword) {
+    public void resetParentPassword(Long id, String newPassword, Long schoolId) {
         if (newPassword == null || newPassword.trim().length() < 4) {
             throw new BadRequestException("Password must be at least 4 characters.");
         }
-        Student existing = studentRepository.findById(id)
+        Student existing = studentRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
         existing.setPasswordHash(passwordEncoder.encode(newPassword.trim()));
         studentRepository.save(existing);
         log.info("Admin reset parent login password for student id: {}", id);
     }
 
-    public void deleteStudent(Long id) {
-        if (!studentRepository.existsById(id)) {
+    public void deleteStudent(Long id, Long schoolId) {
+        if (!studentRepository.existsByIdAndSchoolId(id, schoolId)) {
             throw new ResourceNotFoundException("Student", "id", id);
         }
         studentRepository.deleteById(id);
@@ -268,15 +270,14 @@ public class StudentService {
      * are untouched (same as a single delete already leaves them), since they're separate
      * databases with no cross-service cascade in this architecture.
      */
-    public long clearAllStudents() {
-        long count = studentRepository.count();
-        studentRepository.deleteAllInBatch();
-        log.warn("Cleared all student records: {} deleted", count);
+    public long clearAllStudents(Long schoolId) {
+        long count = studentRepository.deleteBySchoolId(schoolId);
+        log.warn("Cleared all student records for schoolId {}: {} deleted", schoolId, count);
         return count;
     }
 
-    public StudentDTO updateStudentStatus(Long id, boolean isActive) {
-        Student existing = studentRepository.findById(id)
+    public StudentDTO updateStudentStatus(Long id, boolean isActive, Long schoolId) {
+        Student existing = studentRepository.findByIdAndSchoolId(id, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
         existing.setIsActive(isActive);
         Student updated = studentRepository.save(existing);

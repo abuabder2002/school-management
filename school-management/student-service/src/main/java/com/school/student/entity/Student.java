@@ -32,6 +32,10 @@ public class Student {
 
     private Long parentId;
 
+    // Nullable: ddl-auto=update adds a new column as NOT NULL in one step, which fails against
+    // a table that already has rows. Backfilled to 1 (Default School) by SchoolIdBackfillRunner.
+    private Long schoolId;
+
     @Column(nullable = false)
     private String className;
 

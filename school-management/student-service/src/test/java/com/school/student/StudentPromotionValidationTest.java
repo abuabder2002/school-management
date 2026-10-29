@@ -45,6 +45,7 @@ public class StudentPromotionValidationTest {
         s.setDateOfBirth(LocalDate.of(2008, 1, 1));
         s.setGender("Male");
         s.setIsActive(true);
+        s.setSchoolId(1L);
         testStudent = studentRepository.save(s);
     }
 
@@ -63,7 +64,7 @@ public class StudentPromotionValidationTest {
                 .build();
 
         BadRequestException ex = assertThrows(BadRequestException.class, () -> {
-            studentService.updateStudent(testStudent.getId(), dto);
+            studentService.updateStudent(testStudent.getId(), dto, 1L);
         });
 
         assertEquals("Student cannot be demoted to a lower class.", ex.getMessage());
@@ -83,7 +84,7 @@ public class StudentPromotionValidationTest {
                 .gender(testStudent.getGender())
                 .build();
 
-        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto);
+        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto, 1L);
         assertNotNull(updated);
         assertEquals("Class 10", updated.getClassName());
     }
@@ -102,7 +103,7 @@ public class StudentPromotionValidationTest {
                 .gender(testStudent.getGender())
                 .build();
 
-        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto);
+        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto, 1L);
         assertNotNull(updated);
         assertEquals("Class 11", updated.getClassName());
 
@@ -125,7 +126,7 @@ public class StudentPromotionValidationTest {
                 .gender(testStudent.getGender())
                 .build();
 
-        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto);
+        StudentDTO updated = studentService.updateStudent(testStudent.getId(), dto, 1L);
         assertNotNull(updated);
         assertEquals("Class 12", updated.getClassName());
     }
