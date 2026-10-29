@@ -47,6 +47,13 @@ public class SchoolController {
         return ResponseEntity.ok(ApiResponse.success(schoolService.getOwnSchool()));
     }
 
+    /** ADMIN-only: the module toggles for the caller's own school (matched before the SUPER_ADMIN rules below). */
+    @GetMapping("/me/modules")
+    public ResponseEntity<ApiResponse<List<SchoolModuleToggleDTO>>> getOwnModules() {
+        Long schoolId = schoolService.resolveOwnSchoolId();
+        return ResponseEntity.ok(ApiResponse.success(moduleToggleService.getTogglesForSchool(schoolId)));
+    }
+
     @PutMapping("/{id}/subscription")
     public ResponseEntity<ApiResponse<SchoolDTO>> updateSubscription(
             @PathVariable("id") Long id,

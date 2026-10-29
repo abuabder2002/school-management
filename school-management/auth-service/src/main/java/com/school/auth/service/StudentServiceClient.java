@@ -79,6 +79,7 @@ public class StudentServiceClient {
             String section = data.get("section") != null ? data.get("section").toString() : "";
             String phone = data.get("phoneNumber") != null ? data.get("phoneNumber").toString() : "";
             Boolean isActive = data.get("isActive") != null ? Boolean.valueOf(data.get("isActive").toString()) : true;
+            Long schoolId = data.get("schoolId") != null ? Long.valueOf(data.get("schoolId").toString()) : null;
 
             return StudentAuthDTO.builder()
                     .studentId(studentId)
@@ -88,6 +89,7 @@ public class StudentServiceClient {
                     .section(section)
                     .phoneNumber(phone)
                     .isActive(isActive)
+                    .schoolId(schoolId)
                     .build();
         }
 

@@ -37,6 +37,9 @@ public class SchoolModuleToggleService {
         MODULE_REGISTRY.put("BOARD_RESULTS", "Board Results");
         MODULE_REGISTRY.put("ID_CARDS", "ID Cards");
         MODULE_REGISTRY.put("MODULE_ACCESS", "Module Access");
+        MODULE_REGISTRY.put("DAILY_SCHEDULE", "Daily Schedule");
+        MODULE_REGISTRY.put("VACANCIES", "Vacancies");
+        MODULE_REGISTRY.put("SUBSCRIPTION", "Subscription");
     }
 
     public static Map<String, String> registry() {

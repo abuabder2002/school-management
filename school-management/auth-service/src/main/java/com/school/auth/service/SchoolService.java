@@ -97,6 +97,16 @@ public class SchoolService {
 
     /** The caller's own school, read-only (ADMIN role) — resolved from their own User row, never a path/body parameter. */
     public SchoolDTO getOwnSchool() {
+        Long schoolId = resolveOwnSchoolId();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = (authentication != null) ? authentication.getName() : null;
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("School", "id", schoolId));
+        return toDTO(school, email);
+    }
+
+    /** Resolves the caller's own schoolId from their User row (never a path/body parameter). */
+    public Long resolveOwnSchoolId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = (authentication != null) ? authentication.getName() : null;
         Long schoolId = email != null
@@ -105,9 +115,7 @@ public class SchoolService {
         if (schoolId == null) {
             throw new BadRequestException("Could not resolve your school; please log in again.");
         }
-        School school = schoolRepository.findById(schoolId)
-                .orElseThrow(() -> new ResourceNotFoundException("School", "id", schoolId));
-        return toDTO(school, email);
+        return schoolId;
     }
 
     private SchoolDTO toDTO(School school, String adminEmail) {

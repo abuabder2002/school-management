@@ -239,15 +239,23 @@ public class UserService {
                             .password(passwordEncoder.encode(request.getPassword()))
                             .role(Role.PARENT)
                             .studentId(student.getStudentId())
-                            .schoolId(resolveSchoolIdForNewUser())
+                            // Not resolveSchoolIdForNewUser(): this is a public self-service login
+                            // with no authenticated actor, and that heuristic falls back to null
+                            // once there's more than one school. The student's own schoolId
+                            // (resolved via student-service) is the actual source of truth here.
+                            .schoolId(student.getSchoolId())
                             .build();
                     return userRepository.save(newUser);
                 });
 
-        // Ensure user's studentId, name, and phone/email are in sync with the resolved student
+        // Ensure user's studentId, name, phone/email, and schoolId are in sync with the resolved student
         boolean changed = false;
         if (!student.getStudentId().equals(user.getStudentId())) {
             user.setStudentId(student.getStudentId());
+            changed = true;
+        }
+        if (student.getSchoolId() != null && !student.getSchoolId().equals(user.getSchoolId())) {
+            user.setSchoolId(student.getSchoolId());
             changed = true;
         }
         if (student.getStudentName() != null && !student.getStudentName().isBlank()) {
