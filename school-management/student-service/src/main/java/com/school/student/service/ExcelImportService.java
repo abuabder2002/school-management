@@ -429,6 +429,7 @@ public class ExcelImportService {
     }
 
     private BulkUploadResult executeBulkUpload(MultipartFile file, String expectedClassName, boolean commitToDatabase, Long schoolId) throws IOException {
+        com.school.student.service.StudentService.requireSchoolId(schoolId);
         if (file.isEmpty()) {
             return BulkUploadResult.builder()
                     .success(false)

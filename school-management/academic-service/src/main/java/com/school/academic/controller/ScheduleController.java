@@ -84,10 +84,13 @@ public class ScheduleController {
         return role.toUpperCase().replace("ROLE_", "").trim();
     }
 
-    /** schoolIdParam (trusted internal caller) takes priority; otherwise resolve from the external caller's JWT. */
+    /**
+     * An external (JWT-bearing) caller's own token always wins — schoolIdParam is only trusted
+     * when there is no Authorization header at all, i.e. a genuine internal caller. A logged-in
+     * user must never be able to override their own schoolId via a query parameter.
+     */
     private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
-        if (schoolIdParam != null) return schoolIdParam;
-        if (authHeader == null) return null;
+        if (authHeader == null) return schoolIdParam;
         String token = jwtDecoder.extractRaw(authHeader);
         return token != null ? jwtDecoder.getSchoolId(token) : null;
     }

@@ -257,6 +257,7 @@ public class FeeExcelService {
      */
     @Transactional
     public BulkUploadBillingResult processBulkUpload(String expectedClassName, MultipartFile file, Long schoolId) throws IOException {
+        FeeService.requireSchoolId(schoolId);
         if (file.isEmpty()) {
             return BulkUploadBillingResult.builder()
                     .success(false)

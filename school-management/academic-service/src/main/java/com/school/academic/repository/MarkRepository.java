@@ -29,6 +29,9 @@ public interface MarkRepository extends JpaRepository<Mark, Long> {
     Optional<Mark> findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
             Long studentId, String subjectName, String examName);
 
+    Optional<Mark> findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCaseAndSchoolId(
+            Long studentId, String subjectName, String examName, Long schoolId);
+
     Optional<Mark> findFirstByAdmissionNumberAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
             String admissionNumber, String subjectName, String examName);
 

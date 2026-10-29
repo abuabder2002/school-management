@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Business logic for Student management.
@@ -147,6 +148,7 @@ public class StudentService {
     }
 
     public StudentDTO createStudent(StudentDTO dto, Long schoolId) {
+        requireSchoolId(schoolId);
         if (dto.getClassName() == null || dto.getClassName().isBlank()) {
             throw new BadRequestException("Class name is required");
         }
@@ -164,7 +166,7 @@ public class StudentService {
         if (studentRepository.existsByAdmissionNumberAndSchoolId(dto.getAdmissionNumber(), schoolId)) {
             throw new BadRequestException("Admission number already exists: " + dto.getAdmissionNumber());
         }
-        if (studentRepository.isDuplicateStudent(dto.getName(), dto.getFatherName(), dto.getMotherName(), dto.getGuardianName(), dto.getAddress(), dto.getDateOfBirth())) {
+        if (studentRepository.isDuplicateStudent(dto.getName(), dto.getFatherName(), dto.getMotherName(), dto.getGuardianName(), dto.getAddress(), dto.getDateOfBirth(), schoolId)) {
             throw new BadRequestException("A student with the same Name, Father Name, Address and DOB already exists.");
         }
         Student student = toEntity(dto);
@@ -199,7 +201,7 @@ public class StudentService {
             existing.setClassName(AcademicClassOrder.toApplicationClassName(requestedClass));
         }
 
-        if (studentRepository.isDuplicateStudentExcludingId(id, dto.getName(), dto.getFatherName(), dto.getMotherName(), dto.getGuardianName(), dto.getAddress(), dto.getDateOfBirth())) {
+        if (studentRepository.isDuplicateStudentExcludingId(id, dto.getName(), dto.getFatherName(), dto.getMotherName(), dto.getGuardianName(), dto.getAddress(), dto.getDateOfBirth(), schoolId)) {
             throw new BadRequestException("A student with the same Name, Father Name, Address and DOB already exists.");
         }
 
@@ -270,6 +272,7 @@ public class StudentService {
      * are untouched (same as a single delete already leaves them), since they're separate
      * databases with no cross-service cascade in this architecture.
      */
+    @Transactional
     public long clearAllStudents(Long schoolId) {
         long count = studentRepository.deleteBySchoolId(schoolId);
         log.warn("Cleared all student records for schoolId {}: {} deleted", schoolId, count);
@@ -394,5 +397,16 @@ public class StudentService {
                 .photo(dto.getPhoto())
                 .passwordHash(dto.getPassword() != null && !dto.getPassword().isBlank() ? passwordEncoder.encode(dto.getPassword()) : null)
                 .build();
+    }
+
+    /**
+     * Guards every path that stamps schoolId onto a new row: a null here (unresolvable caller —
+     * e.g. a stale pre-isolation token) must be rejected outright, never silently written and
+     * later swept into Default School by the next boot's backfill.
+     */
+    public static void requireSchoolId(Long schoolId) {
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
     }
 }

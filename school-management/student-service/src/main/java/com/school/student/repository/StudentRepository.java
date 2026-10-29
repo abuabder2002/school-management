@@ -62,6 +62,8 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     List<Student> findByNameIgnoreCase(String name);
 
+    List<Student> findByNameIgnoreCaseAndSchoolId(String name, Long schoolId);
+
     long countByIsActiveTrue();
     long countByIsActiveFalse();
 
@@ -80,9 +82,9 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
     List<Student> findByParentIdAndSchoolId(Long parentId, Long schoolId);
     // Present/Absent requires attendance repository or complex query, but I will mock it temporarily or implement it properly if attendance entity exists.
 
-    default boolean isDuplicateStudent(String name, String fatherName, String motherName, String guardianName, String address, java.time.LocalDate dateOfBirth) {
+    default boolean isDuplicateStudent(String name, String fatherName, String motherName, String guardianName, String address, java.time.LocalDate dateOfBirth, Long schoolId) {
         if (name == null) return false;
-        List<Student> students = findByNameIgnoreCase(name.trim());
+        List<Student> students = findByNameIgnoreCaseAndSchoolId(name.trim(), schoolId);
         for (Student s : students) {
             if (matches(s, fatherName, motherName, guardianName, address, dateOfBirth)) {
                 return true;
@@ -91,9 +93,9 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
         return false;
     }
 
-    default boolean isDuplicateStudentExcludingId(Long id, String name, String fatherName, String motherName, String guardianName, String address, java.time.LocalDate dateOfBirth) {
+    default boolean isDuplicateStudentExcludingId(Long id, String name, String fatherName, String motherName, String guardianName, String address, java.time.LocalDate dateOfBirth, Long schoolId) {
         if (name == null) return false;
-        List<Student> students = findByNameIgnoreCase(name.trim());
+        List<Student> students = findByNameIgnoreCaseAndSchoolId(name.trim(), schoolId);
         for (Student s : students) {
             if (!s.getId().equals(id) && matches(s, fatherName, motherName, guardianName, address, dateOfBirth)) {
                 return true;

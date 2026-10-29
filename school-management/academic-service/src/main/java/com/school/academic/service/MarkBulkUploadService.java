@@ -228,6 +228,7 @@ public class MarkBulkUploadService {
      */
     @Transactional
     public BulkUploadResult processBulkUpload(MultipartFile file, String examName, Long schoolId) throws IOException {
+        AcademicService.requireSchoolId(schoolId);
         if (file.isEmpty()) {
             throw new IllegalArgumentException("The uploaded file is empty.");
         }
@@ -484,8 +485,8 @@ public class MarkBulkUploadService {
                              double marks, double maxMarks, boolean absent, Long schoolId) {
         String grade = absent ? ABSENT_GRADE : Mark.calculateGrade(marks, maxMarks);
         Optional<Mark> existingOpt = markRepository
-                .findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
-                        student.getId(), subject.getName(), exam.getName());
+                .findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCaseAndSchoolId(
+                        student.getId(), subject.getName(), exam.getName(), schoolId);
 
         if (existingOpt.isPresent()) {
             Mark existing = existingOpt.get();

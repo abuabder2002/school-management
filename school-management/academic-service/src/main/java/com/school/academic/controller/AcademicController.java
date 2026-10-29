@@ -95,8 +95,10 @@ public class AcademicController {
     }
 
     @GetMapping("/subjects/class/{classId}")
-    public ResponseEntity<ApiResponse<List<Subject>>> getSubjectsByClass(@PathVariable("classId") Long classId) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getSubjectsByClass(classId)));
+    public ResponseEntity<ApiResponse<List<Subject>>> getSubjectsByClass(
+            @PathVariable("classId") Long classId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(academicService.getSubjectsByClass(classId, resolveSchoolId(authHeader))));
     }
 
     @PostMapping("/subjects")

@@ -14,6 +14,7 @@ import com.school.academic.repository.ExamRepository;
 import com.school.academic.repository.HomeworkRepository;
 import com.school.academic.repository.MarkRepository;
 import com.school.academic.repository.SubjectRepository;
+import com.school.common.exception.BadRequestException;
 import com.school.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ public class AcademicService {
     // ---- AcademicClass ----
 
     public List<AcademicClass> getAllClasses(Long schoolId) {
+        ensureStandardAcademicDataSeeded(schoolId);
         return classRepository.findBySchoolId(schoolId);
     }
 
@@ -52,6 +54,7 @@ public class AcademicService {
     }
 
     public AcademicClass createClass(AcademicClass academicClass, Long schoolId) {
+        requireSchoolId(schoolId);
         academicClass.setSchoolId(schoolId);
         return classRepository.save(academicClass);
     }
@@ -74,6 +77,7 @@ public class AcademicService {
     // ---- Subject ----
 
     public List<Subject> getAllSubjects(Long schoolId) {
+        ensureStandardAcademicDataSeeded(schoolId);
         return subjectRepository.findBySchoolId(schoolId);
     }
 
@@ -82,12 +86,13 @@ public class AcademicService {
                 .orElseThrow(() -> new ResourceNotFoundException("Subject", "id", id));
     }
 
-    public List<Subject> getSubjectsByClass(Long classId) {
-        return subjectRepository.findByClassId(classId);
+    public List<Subject> getSubjectsByClass(Long classId, Long schoolId) {
+        return subjectRepository.findByClassIdAndSchoolId(classId, schoolId);
     }
 
     @Transactional
     public Subject createSubject(Subject subject, Long schoolId) {
+        requireSchoolId(schoolId);
         if (subject.getName() == null || subject.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Subject name is required.");
         }
@@ -149,6 +154,7 @@ public class AcademicService {
     // ---- Exam ----
 
     public List<Exam> getAllExams(Long schoolId) {
+        ensureStandardAcademicDataSeeded(schoolId);
         return examRepository.findBySchoolId(schoolId);
     }
 
@@ -159,6 +165,7 @@ public class AcademicService {
 
     @Transactional
     public Exam createExam(Exam exam, Long schoolId) {
+        requireSchoolId(schoolId);
         if (exam.getName() == null || exam.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Exam name is required.");
         }
@@ -243,6 +250,7 @@ public class AcademicService {
     }
 
     public com.school.academic.dto.MarkDTO saveOrUpdateMark(com.school.academic.dto.MarkDTO dto, Long schoolId) {
+        requireSchoolId(schoolId);
         if (dto.getStudentId() == null) {
             throw new IllegalArgumentException("Student ID is required.");
         }
@@ -262,8 +270,8 @@ public class AcademicService {
         // Check for existing mark for Student + Subject + Exam (upsert)
         java.util.Optional<Mark> existingOpt = dto.getId() != null ?
                 markRepository.findByIdAndSchoolId(dto.getId(), schoolId) :
-                markRepository.findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCase(
-                        dto.getStudentId(), dto.getSubjectName(), dto.getExamName());
+                markRepository.findFirstByStudentIdAndSubjectNameIgnoreCaseAndExamNameIgnoreCaseAndSchoolId(
+                        dto.getStudentId(), dto.getSubjectName(), dto.getExamName(), schoolId);
 
         Long resolvedExamId = dto.getExamId();
         if (resolvedExamId == null && dto.getExamName() != null) {
@@ -433,6 +441,7 @@ public class AcademicService {
     }
 
     public Homework createHomework(Homework homework, Long schoolId) {
+        requireSchoolId(schoolId);
         homework.setSchoolId(schoolId);
         return homeworkRepository.save(homework);
     }
@@ -466,6 +475,7 @@ public class AcademicService {
 
     @Transactional
     public BoardResultDTO createBoardResult(BoardResultDTO dto, Long schoolId) {
+        requireSchoolId(schoolId);
         BoardResult result = BoardResult.builder()
                 .studentId(dto.getStudentId())
                 .admissionNumber(dto.getAdmissionNumber())
@@ -505,6 +515,60 @@ public class AcademicService {
     private Double sumMarks(List<SubjectMarkDTO> subjects) {
         if (subjects == null) return 0.0;
         return subjects.stream().mapToDouble(s -> s.getMarks() != null ? s.getMarks() : 0.0).sum();
+    }
+
+    /**
+     * Guards every path that stamps schoolId onto a new row: a null here (unresolvable caller —
+     * e.g. a stale pre-isolation token) must be rejected outright, never silently written and
+     * later swept into Default School by the next boot's backfill.
+     */
+    public static void requireSchoolId(Long schoolId) {
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
+    }
+
+    /**
+     * A school with zero exams/subjects/classes of its own (every school created after this
+     * isolation work shipped) would otherwise show empty dropdowns throughout Marks/Homework —
+     * before this fix, a new school silently inherited Default School's shared seed data; now
+     * that's correctly blocked, but nothing replaced it. Seeds the same standard set
+     * {@link com.school.academic.config.AcademicDataInitializer} seeds for Default School,
+     * scoped to this schoolId, the first time any of the three lists is read empty.
+     */
+    private void ensureStandardAcademicDataSeeded(Long schoolId) {
+        if (schoolId == null) return;
+        if (examRepository.findBySchoolId(schoolId).isEmpty()) {
+            for (String examName : com.school.academic.config.AcademicDataInitializer.STANDARD_EXAMS) {
+                examRepository.save(Exam.builder()
+                        .name(examName)
+                        .totalMarks(100)
+                        .examDate(java.time.LocalDate.now().plusMonths(1))
+                        .schoolId(schoolId)
+                        .build());
+            }
+            log.info("Seeded standard exams for schoolId {}", schoolId);
+        }
+        if (subjectRepository.findBySchoolId(schoolId).isEmpty()) {
+            for (String[] sub : com.school.academic.config.AcademicDataInitializer.STANDARD_SUBJECTS) {
+                subjectRepository.save(Subject.builder()
+                        .name(sub[0])
+                        .code(sub[1])
+                        .schoolId(schoolId)
+                        .build());
+            }
+            log.info("Seeded standard subjects for schoolId {}", schoolId);
+        }
+        if (classRepository.findBySchoolId(schoolId).isEmpty()) {
+            for (int i = 1; i <= 12; i++) {
+                classRepository.save(AcademicClass.builder()
+                        .name("Class " + i)
+                        .section("A")
+                        .schoolId(schoolId)
+                        .build());
+            }
+            log.info("Seeded standard classes for schoolId {}", schoolId);
+        }
     }
 
     private List<BoardResult.SubjectMark> toSubjectEntities(List<SubjectMarkDTO> subjects) {

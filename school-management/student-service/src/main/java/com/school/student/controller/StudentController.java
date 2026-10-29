@@ -75,12 +75,14 @@ public class StudentController {
 
     /**
      * Resolves schoolId for an endpoint also called internally (no Authorization header, by the
-     * codebase's existing internal-call convention): an explicit schoolId query param from a
-     * trusted internal caller takes priority; otherwise fall back to the external caller's JWT.
+     * codebase's existing internal-call convention). An external (JWT-bearing) caller's own
+     * token always wins — schoolIdParam is only trusted when there is no Authorization header
+     * at all, i.e. a genuine internal caller. A logged-in user must never be able to override
+     * their own schoolId via a query parameter.
      */
     private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
-        if (schoolIdParam != null) return schoolIdParam;
-        return resolveSchoolId(authHeader);
+        if (authHeader != null) return resolveSchoolId(authHeader);
+        return schoolIdParam;
     }
 
     /** GET /api/students */

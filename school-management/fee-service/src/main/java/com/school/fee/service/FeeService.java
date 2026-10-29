@@ -295,6 +295,7 @@ public class FeeService {
      */
     @Transactional
     public FeeDTO createOrUpdateFee(FeeDTO dto, Long schoolId) {
+        requireSchoolId(schoolId);
         if (dto.getStudentId() == null) {
             throw new BadRequestException("Student ID is required.");
         }
@@ -637,5 +638,16 @@ public class FeeService {
             return Integer.compare(rankA, rankB);
         }
         return a.compareToIgnoreCase(b);
+    }
+
+    /**
+     * Guards every path that stamps schoolId onto a new row: a null here (unresolvable caller —
+     * e.g. a stale pre-isolation token) must be rejected outright, never silently written and
+     * later swept into Default School by the next boot's backfill.
+     */
+    public static void requireSchoolId(Long schoolId) {
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
     }
 }

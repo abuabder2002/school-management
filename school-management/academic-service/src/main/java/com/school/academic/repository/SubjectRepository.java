@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
     List<Subject> findByClassId(Long classId);
 
+    List<Subject> findByClassIdAndSchoolId(Long classId, Long schoolId);
+
     List<Subject> findBySchoolId(Long schoolId);
 
     Optional<Subject> findByIdAndSchoolId(Long id, Long schoolId);

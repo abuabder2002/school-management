@@ -13,6 +13,7 @@ import com.school.attendance.repository.HolidayRepository;
 import com.school.attendance.repository.LeaveReasonRepository;
 import com.school.attendance.repository.LeaveRequestRepository;
 import com.school.attendance.repository.TeacherLeaveRequestRepository;
+import com.school.common.exception.BadRequestException;
 import com.school.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class AttendanceService {
     // ---- Attendance ----
 
     public AttendanceDTO markAttendance(AttendanceDTO dto, Long schoolId) {
+        requireSchoolId(schoolId);
         Attendance attendance = Attendance.builder()
                 .personType(dto.getPersonType())
                 .personId(dto.getPersonId())
@@ -97,6 +99,7 @@ public class AttendanceService {
     }
 
     public Holiday createHoliday(Holiday holiday, Long schoolId) {
+        requireSchoolId(schoolId);
         holiday.setSchoolId(schoolId);
         return holidayRepository.save(holiday);
     }
@@ -125,6 +128,7 @@ public class AttendanceService {
      * Status is set to RECORDED directly — no approval workflow.
      */
     public LeaveRecordDTO submitLeave(Long studentId, Long parentId, LeaveRequest request, Long schoolId) {
+        requireSchoolId(schoolId);
         request.setStudentId(studentId);
         request.setParentId(parentId);
         request.setStatus("RECORDED");
@@ -222,6 +226,7 @@ public class AttendanceService {
      * Notifies the student's parent portal directly via targetStudentId.
      */
     public LeaveRecordDTO submitAdminLeave(Long studentId, LeaveRequest request, Long schoolId) {
+        requireSchoolId(schoolId);
         request.setStudentId(studentId);
         request.setParentId(0L);
         request.setRecordedBy("ADMIN");
@@ -264,6 +269,7 @@ public class AttendanceService {
 
     public TeacherLeaveRequest submitTeacherLeave(Long teacherId, String teacherName, String assignedClass,
                                                    String assignedSection, TeacherLeaveRequest request, Long schoolId) {
+        requireSchoolId(schoolId);
         request.setTeacherId(teacherId);
         request.setTeacherName(teacherName);
         request.setAssignedClass(assignedClass);
@@ -417,6 +423,7 @@ public class AttendanceService {
     }
 
     public LeaveReason createLeaveReason(LeaveReason reason, Long schoolId) {
+        requireSchoolId(schoolId);
         reason.setActive(true);
         reason.setSchoolId(schoolId);
         return leaveReasonRepository.save(reason);
@@ -461,5 +468,16 @@ public class AttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveReason", "id", id));
         existing.setActive(true);
         return leaveReasonRepository.save(existing);
+    }
+
+    /**
+     * Guards every path that stamps schoolId onto a new row: a null here (unresolvable caller —
+     * e.g. a stale pre-isolation token) must be rejected outright, never silently written and
+     * later swept into Default School by the next boot's backfill.
+     */
+    public static void requireSchoolId(Long schoolId) {
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
     }
 }

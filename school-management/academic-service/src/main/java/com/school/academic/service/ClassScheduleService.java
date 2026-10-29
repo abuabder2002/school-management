@@ -28,6 +28,7 @@ public class ClassScheduleService {
     }
 
     public ClassSchedule create(ClassSchedule entry, Long schoolId) {
+        com.school.academic.service.AcademicService.requireSchoolId(schoolId);
         entry.setSchoolId(schoolId);
         return scheduleRepository.save(entry);
     }
