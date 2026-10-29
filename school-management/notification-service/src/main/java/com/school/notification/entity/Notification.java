@@ -39,6 +39,8 @@ public class Notification {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    private Long schoolId;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

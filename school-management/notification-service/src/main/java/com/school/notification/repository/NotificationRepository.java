@@ -18,4 +18,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     /** All notifications, newest first — for Admin history, and the base list every role filters from. */
     List<Notification> findAllByOrderByCreatedAtDesc();
+
+    /** Same, scoped to one school — the actual query used once schoolId is known. */
+    List<Notification> findBySchoolIdOrderByCreatedAtDesc(Long schoolId);
 }

@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for Notification management.
@@ -30,13 +31,16 @@ public class NotificationController {
      * teacher submits their own leave — same internal-call pattern used by the *ServiceClient
      * classes that call into student-service: the gateway requires a valid token for every
      * external /api/** request, so a request with no header at all only ever reaches this
-     * service from inside the backend's own network.
+     * service from inside the backend's own network. An internal caller supplies schoolId
+     * directly in the body (it already resolved it from its own caller's JWT); an external
+     * ADMIN caller has it resolved from their own token instead.
      */
     @PostMapping
     public ResponseEntity<ApiResponse<NotificationDTO>> sendNotification(
             @Valid @RequestBody NotificationDTO dto,
             HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
+        Long schoolId = null;
         if (authHeader != null) {
             String token = jwtDecoder.extractRaw(authHeader);
             if (token == null || !jwtDecoder.isValidToken(token)) {
@@ -48,9 +52,15 @@ public class NotificationController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Only ADMIN can send notifications"));
             }
+            schoolId = jwtDecoder.getSchoolId(token);
+        } else if (dto.getSchoolId() != null) {
+            schoolId = dto.getSchoolId();
+        }
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
         }
 
-        NotificationDTO sent = notificationService.sendNotification(dto);
+        NotificationDTO sent = notificationService.sendNotification(dto, schoolId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Notification sent", sent));
     }
@@ -75,7 +85,7 @@ public class NotificationController {
         if (newMessage == null || newMessage.isBlank()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Message is required"));
         }
-        NotificationDTO updated = notificationService.updateMessage(id, newMessage.trim());
+        NotificationDTO updated = notificationService.updateMessage(id, newMessage.trim(), jwtDecoder.getSchoolId(token));
         return ResponseEntity.ok(ApiResponse.success("Notification updated", updated));
     }
 
@@ -93,7 +103,7 @@ public class NotificationController {
                     .body(ApiResponse.error("Only ADMIN can view notification history"));
         }
 
-        List<NotificationDTO> history = notificationService.getAllNotifications();
+        List<NotificationDTO> history = notificationService.getAllNotifications(jwtDecoder.getSchoolId(token));
         return ResponseEntity.ok(ApiResponse.success(history));
     }
 
@@ -114,16 +124,17 @@ public class NotificationController {
         }
 
         String role = jwtDecoder.getRole(token);
+        Long schoolId = jwtDecoder.getSchoolId(token);
 
         if ("TEACHER".equals(role)) {
-            return ResponseEntity.ok(ApiResponse.success(notificationService.getNotificationsForStaffRole()));
+            return ResponseEntity.ok(ApiResponse.success(notificationService.getNotificationsForStaffRole(schoolId)));
         } else if ("PARENT".equals(role) || "STUDENT".equals(role)) {
             Long studentId = jwtDecoder.getStudentId(token);
-            List<NotificationDTO> notifications = notificationService.getNotificationsForStudentRole(studentId, className);
+            List<NotificationDTO> notifications = notificationService.getNotificationsForStudentRole(studentId, className, schoolId);
             return ResponseEntity.ok(ApiResponse.success(notifications));
         } else if ("ADMIN".equals(role)) {
             // Admin can see all
-            List<NotificationDTO> all = notificationService.getAllNotifications();
+            List<NotificationDTO> all = notificationService.getAllNotifications(schoolId);
             return ResponseEntity.ok(ApiResponse.success(all));
         } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)

@@ -38,4 +38,7 @@ public class NotificationDTO {
     private Long targetStudentId;
 
     private LocalDateTime createdAt;
+
+    /** Set by an internal (no-Authorization-header) caller only; an external ADMIN caller's value here is ignored in favor of their own JWT. */
+    private Long schoolId;
 }

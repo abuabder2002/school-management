@@ -38,8 +38,8 @@ public class NotificationService {
         return upper;
     }
 
-    /** Admin sends a notification to an audience */
-    public NotificationDTO sendNotification(NotificationDTO dto) {
+    /** Admin (or an internal caller with an already-resolved schoolId) sends a notification. */
+    public NotificationDTO sendNotification(NotificationDTO dto, Long schoolId) {
         String normalizedAudience = normalizeAudience(dto.getAudience());
         Notification notification = Notification.builder()
                 .date(dto.getDate())
@@ -47,6 +47,7 @@ public class NotificationService {
                 .message(dto.getMessage())
                 .status("SENT")
                 .targetStudentId(dto.getTargetStudentId())
+                .schoolId(schoolId)
                 .build();
 
         Notification saved = notificationRepository.save(notification);
@@ -55,8 +56,10 @@ public class NotificationService {
     }
 
     /** Admin edits the message of a previously sent notification. */
-    public NotificationDTO updateMessage(Long id, String newMessage) {
-        Notification notification = notificationRepository.findById(id)
+    public NotificationDTO updateMessage(Long id, String newMessage, Long schoolId) {
+        Notification notification = notificationRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
+                .filter(n -> n.getId().equals(id))
+                .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", id));
         notification.setMessage(newMessage);
         Notification saved = notificationRepository.save(notification);
@@ -64,16 +67,16 @@ public class NotificationService {
         return toDTO(saved);
     }
 
-    /** Admin views all notification history */
-    public List<NotificationDTO> getAllNotifications() {
-        return notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+    /** Admin views all notification history for their own school */
+    public List<NotificationDTO> getAllNotifications(Long schoolId) {
+        return notificationRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
                 .map(this::toDTO)
                 .toList();
     }
 
     /** Teachers/staff fetch notifications targeted at STAFF (or the legacy TEACHERS/BOTH values). */
-    public List<NotificationDTO> getNotificationsForStaffRole() {
-        return notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+    public List<NotificationDTO> getNotificationsForStaffRole(Long schoolId) {
+        return notificationRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
                 .filter(n -> matchesStaffAudience(n.getAudience()))
                 .map(this::toDTO)
                 .toList();
@@ -84,8 +87,8 @@ public class NotificationService {
      * (or the legacy STUDENTS/BOTH values), additionally filtered to notices targeted at their
      * own child when a notification carries a specific targetStudentId.
      */
-    public List<NotificationDTO> getNotificationsForStudentRole(Long studentId, String className) {
-        return notificationRepository.findAllByOrderByCreatedAtDesc().stream()
+    public List<NotificationDTO> getNotificationsForStudentRole(Long studentId, String className, Long schoolId) {
+        return notificationRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
                 .filter(n -> matchesStudentAudience(n.getAudience(), className))
                 .filter(n -> n.getTargetStudentId() == null || n.getTargetStudentId().equals(studentId))
                 .map(this::toDTO)
