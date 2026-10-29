@@ -12,6 +12,12 @@ export const schoolService = {
     return response.data;
   },
 
+  /** ADMIN: the module toggles for the caller's own school. */
+  getOwnModules: async () => {
+    const response = await api.get('/api/auth/schools/me/modules');
+    return response.data;
+  },
+
   createSchool: async (schoolData) => {
     // schoolData: { name, adminName, adminEmail, adminPassword, subscriptionStart, subscriptionEnd, planType }
     const response = await api.post('/api/auth/schools', schoolData);

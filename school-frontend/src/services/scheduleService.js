@@ -1,8 +1,8 @@
 import api from './api';
 
 export const scheduleService = {
-  getForClass: async (className, section) => {
-    const response = await api.get('/api/academic/schedule', { params: { className, section: section || undefined } });
+  getForClass: async (className, section, date) => {
+    const response = await api.get('/api/academic/schedule', { params: { className, section: section || undefined, date: date || undefined } });
     return response.data;
   },
 

@@ -5,6 +5,7 @@ import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { useSchoolModules } from './context/SchoolModulesContext';
 
 // Auth Pages
 import { Login } from './pages/Login';
@@ -79,6 +80,18 @@ const HomeRedirect = () => {
   return <Navigate to="/login" replace />;
 };
 
+// Blocks direct URL navigation to a module the Super Admin has disabled for this school —
+// the sidebar already hides the link, this stops typing the URL from bypassing that.
+// Stays open while toggles are still loading (fail-open, same as the sidebar's own gating)
+// so a slow network never bounces an admin out of a page that's actually allowed.
+const ModuleGate = ({ moduleKey, children }) => {
+  const { isModuleEnabled, loading } = useSchoolModules();
+  if (!loading && !isModuleEnabled(moduleKey)) {
+    return <Navigate to="/admin" replace />;
+  }
+  return children;
+};
+
 export const App = () => {
   return (
     <ErrorBoundary>
@@ -114,26 +127,26 @@ export const App = () => {
                 }
               >
                 <Route index element={<AdminDashboard />} />
-                 <Route path="students" element={<StudentsPage />} />
+                 <Route path="students" element={<ModuleGate moduleKey="STUDENTS"><StudentsPage /></ModuleGate>} />
                 <Route path="parents" element={<ParentsPage />} />
-                <Route path="staff" element={<StaffAccountsPage />} />
-                <Route path="marks" element={<MarksPage />} />
+                <Route path="staff" element={<ModuleGate moduleKey="STAFF"><StaffAccountsPage /></ModuleGate>} />
+                <Route path="marks" element={<ModuleGate moduleKey="MARKS"><MarksPage /></ModuleGate>} />
                 <Route path="academics" element={<Navigate to="/admin/marks" replace />} />
                 <Route path="attendance" element={<AttendancePage />} />
-                <Route path="fees" element={<FeesPage />} />
-                <Route path="billing" element={<FeesPage />} />
+                <Route path="fees" element={<ModuleGate moduleKey="BILLING"><FeesPage /></ModuleGate>} />
+                <Route path="billing" element={<ModuleGate moduleKey="BILLING"><FeesPage /></ModuleGate>} />
                 <Route path="homework" element={<HomeworkPage />} />
                 <Route path="holidays" element={<HolidayPage />} />
-                <Route path="leave" element={<LeaveRequestsPage />} />
-                <Route path="leave-reasons" element={<LeaveReasonsPage />} />
+                <Route path="leave" element={<ModuleGate moduleKey="LEAVE_RECORDS"><LeaveRequestsPage /></ModuleGate>} />
+                <Route path="leave-reasons" element={<ModuleGate moduleKey="LEAVE_REASONS"><LeaveReasonsPage /></ModuleGate>} />
                 <Route path="import-export" element={<ImportExportPage />} />
-                <Route path="notifications" element={<NotificationsPage />} />
-                <Route path="module-access" element={<ModuleAccessPage />} />
-                <Route path="board-results" element={<BoardResultsPage />} />
-                <Route path="id-cards" element={<IdCardsPage />} />
-                <Route path="daily-schedule" element={<DailySchedulePage />} />
-                <Route path="vacancies" element={<VacanciesPage />} />
-                <Route path="subscription" element={<SubscriptionViewPage />} />
+                <Route path="notifications" element={<ModuleGate moduleKey="NOTICE"><NotificationsPage /></ModuleGate>} />
+                <Route path="module-access" element={<ModuleGate moduleKey="MODULE_ACCESS"><ModuleAccessPage /></ModuleGate>} />
+                <Route path="board-results" element={<ModuleGate moduleKey="BOARD_RESULTS"><BoardResultsPage /></ModuleGate>} />
+                <Route path="id-cards" element={<ModuleGate moduleKey="ID_CARDS"><IdCardsPage /></ModuleGate>} />
+                <Route path="daily-schedule" element={<ModuleGate moduleKey="DAILY_SCHEDULE"><DailySchedulePage /></ModuleGate>} />
+                <Route path="vacancies" element={<ModuleGate moduleKey="VACANCIES"><VacanciesPage /></ModuleGate>} />
+                <Route path="subscription" element={<ModuleGate moduleKey="SUBSCRIPTION"><SubscriptionViewPage /></ModuleGate>} />
               </Route>
 
               {/* Teacher Protected Routes */}
