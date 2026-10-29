@@ -35,4 +35,6 @@ public class Attendance {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus status;
+
+    private Long schoolId;
 }

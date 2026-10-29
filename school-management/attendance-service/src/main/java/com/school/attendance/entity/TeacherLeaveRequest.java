@@ -56,6 +56,8 @@ public class TeacherLeaveRequest {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    private Long schoolId;
+
     /** Convenience getter and JSON property for single-day leave date, matching LeaveRequest's shape. */
     @JsonProperty("leaveDate")
     public LocalDate getLeaveDate() {

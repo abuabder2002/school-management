@@ -34,17 +34,23 @@ public class NotificationServiceClient {
     private static final String LB_URI = "http://NOTIFICATION-SERVICE/api/notifications";
     private static final String DIRECT_URI = "http://localhost:8086/api/notifications";
 
-    public void notify(String audience, String message) {
-        send(Map.of("date", LocalDate.now().toString(), "audience", audience, "message", message));
+    public void notify(String audience, String message, Long schoolId) {
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("date", LocalDate.now().toString());
+        body.put("audience", audience);
+        body.put("message", message);
+        body.put("schoolId", schoolId);
+        send(body);
     }
 
     /** Targets a single student's parent portal (and the admin-wide STUDENTS feed) via targetStudentId. */
-    public void notifyStudent(Long studentId, String message) {
+    public void notifyStudent(Long studentId, String message, Long schoolId) {
         Map<String, Object> body = new java.util.HashMap<>();
         body.put("date", LocalDate.now().toString());
         body.put("audience", "STUDENTS");
         body.put("message", message);
         body.put("targetStudentId", studentId);
+        body.put("schoolId", schoolId);
         send(body);
     }
 

@@ -57,8 +57,10 @@ public class AttendanceController {
 
     /** POST /api/attendance — Mark attendance */
     @PostMapping
-    public ResponseEntity<ApiResponse<AttendanceDTO>> markAttendance(@Valid @RequestBody AttendanceDTO dto) {
-        AttendanceDTO marked = attendanceService.markAttendance(dto);
+    public ResponseEntity<ApiResponse<AttendanceDTO>> markAttendance(
+            @Valid @RequestBody AttendanceDTO dto,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        AttendanceDTO marked = attendanceService.markAttendance(dto, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Attendance marked successfully", marked));
     }
@@ -67,8 +69,9 @@ public class AttendanceController {
     @GetMapping("/person/{personType}/{personId}")
     public ResponseEntity<ApiResponse<List<AttendanceDTO>>> getAttendanceByPerson(
             @PathVariable("personType") com.school.common.enums.PersonType personType,
-            @PathVariable("personId") Long personId) {
-        List<AttendanceDTO> attendance = attendanceService.getAttendanceByPerson(personType, personId);
+            @PathVariable("personId") Long personId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        List<AttendanceDTO> attendance = attendanceService.getAttendanceByPerson(personType, personId, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(attendance));
     }
 
@@ -76,16 +79,18 @@ public class AttendanceController {
     @GetMapping("/today/{personType}/{personId}")
     public ResponseEntity<ApiResponse<AttendanceDTO>> getTodayAttendance(
             @PathVariable("personType") com.school.common.enums.PersonType personType,
-            @PathVariable("personId") Long personId) {
-        AttendanceDTO attendance = attendanceService.getTodayAttendance(personType, personId);
+            @PathVariable("personId") Long personId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        AttendanceDTO attendance = attendanceService.getTodayAttendance(personType, personId, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(attendance));
     }
 
     /** GET /api/attendance/today/{personType} — Today's attendance for all persons of a type */
     @GetMapping("/today/{personType}")
     public ResponseEntity<ApiResponse<List<AttendanceDTO>>> getTodayAttendanceAll(
-            @PathVariable("personType") com.school.common.enums.PersonType personType) {
-        List<AttendanceDTO> attendance = attendanceService.getTodayAttendanceAll(personType);
+            @PathVariable("personType") com.school.common.enums.PersonType personType,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        List<AttendanceDTO> attendance = attendanceService.getTodayAttendanceAll(personType, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(attendance));
     }
 
@@ -95,9 +100,10 @@ public class AttendanceController {
             @RequestParam("date") @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
             @RequestParam("entityType") com.school.common.enums.PersonType entityType,
             @RequestParam(value = "classId", required = false) String classId,
-            @RequestParam(value = "sectionId", required = false) String sectionId) {
+            @RequestParam(value = "sectionId", required = false) String sectionId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        List<AttendanceDTO> attendanceList = attendanceService.getAttendanceByDateAndType(date, entityType);
+        List<AttendanceDTO> attendanceList = attendanceService.getAttendanceByDateAndType(date, entityType, resolveSchoolId(authHeader));
         long present = attendanceList.stream().filter(a -> a.getStatus() == com.school.common.enums.AttendanceStatus.PRESENT).count();
         long absent = attendanceList.stream().filter(a -> a.getStatus() == com.school.common.enums.AttendanceStatus.ABSENT).count();
 
@@ -113,8 +119,9 @@ public class AttendanceController {
 
     /** GET /api/attendance/holidays — All holidays */
     @GetMapping("/holidays")
-    public ResponseEntity<ApiResponse<List<Holiday>>> getAllHolidays() {
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllHolidays()));
+    public ResponseEntity<ApiResponse<List<Holiday>>> getAllHolidays(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllHolidays(resolveSchoolId(authHeader))));
     }
 
     /** POST /api/attendance/holidays — Create holiday (Admin only) */
@@ -124,7 +131,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Holiday>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        Holiday created = attendanceService.createHoliday(holiday);
+        Holiday created = attendanceService.createHoliday(holiday, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Holiday created", created));
     }
@@ -136,7 +143,7 @@ public class AttendanceController {
                                                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Holiday>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success("Holiday updated", attendanceService.updateHoliday(id, holiday)));
+        return ResponseEntity.ok(ApiResponse.success("Holiday updated", attendanceService.updateHoliday(id, holiday, resolveSchoolId(authHeader))));
     }
 
     /** DELETE /api/attendance/holidays/{id} — Delete holiday */
@@ -146,7 +153,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Void>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        attendanceService.deleteHoliday(id);
+        attendanceService.deleteHoliday(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Holiday deleted", null));
     }
 
@@ -188,7 +195,7 @@ public class AttendanceController {
                     .body(ApiResponse.error("Leave reason is required."));
         }
 
-        LeaveRecordDTO saved = attendanceService.submitLeave(studentId, parentId, request);
+        LeaveRecordDTO saved = attendanceService.submitLeave(studentId, parentId, request, jwtDecoder.getSchoolId(token));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Leave recorded successfully", saved));
     }
@@ -217,7 +224,7 @@ public class AttendanceController {
         String assignedClass = jwtDecoder.getAssignedClass(token);
         String assignedSection = jwtDecoder.getAssignedSection(token);
 
-        List<LeaveRecordDTO> records = attendanceService.getTeacherLeaveRecords(assignedClass, assignedSection);
+        List<LeaveRecordDTO> records = attendanceService.getTeacherLeaveRecords(assignedClass, assignedSection, jwtDecoder.getSchoolId(token));
         return ResponseEntity.ok(ApiResponse.success(records));
     }
 
@@ -229,7 +236,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<LeaveRecordDTO>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllLeaveRecordsEnriched()));
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllLeaveRecordsEnriched(resolveSchoolId(authHeader))));
     }
 
     /**
@@ -252,7 +259,7 @@ public class AttendanceController {
                     .body(ApiResponse.error("No student linked to your parent account. Contact admin."));
         }
 
-        List<LeaveRecordDTO> requests = attendanceService.getMyLeaveRecordsByStudent(studentId);
+        List<LeaveRecordDTO> requests = attendanceService.getMyLeaveRecordsByStudent(studentId, jwtDecoder.getSchoolId(token));
         return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
@@ -303,7 +310,7 @@ public class AttendanceController {
         request.setReason(reason.trim());
         request.setSession(session.trim());
 
-        LeaveRecordDTO saved = attendanceService.submitAdminLeave(studentId, request);
+        LeaveRecordDTO saved = attendanceService.submitAdminLeave(studentId, request, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Leave recorded and the parent notified", saved));
     }
@@ -340,7 +347,7 @@ public class AttendanceController {
         }
 
         com.school.attendance.entity.TeacherLeaveRequest saved =
-                attendanceService.submitTeacherLeave(teacherId, request.getTeacherName().trim(), assignedClass, assignedSection, request);
+                attendanceService.submitTeacherLeave(teacherId, request.getTeacherName().trim(), assignedClass, assignedSection, request, jwtDecoder.getSchoolId(token));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Leave recorded successfully", saved));
     }
 
@@ -353,7 +360,7 @@ public class AttendanceController {
         ResponseEntity<ApiResponse<List<com.school.attendance.entity.TeacherLeaveRequest>>> denied =
                 denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllTeacherLeave()));
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllTeacherLeave(resolveSchoolId(authHeader))));
     }
 
     /**
@@ -365,8 +372,9 @@ public class AttendanceController {
         ResponseEntity<ApiResponse<List<com.school.attendance.entity.TeacherLeaveRequest>>> denied =
                 denyUnlessRole(authHeader, "TEACHER");
         if (denied != null) return denied;
-        Long teacherId = jwtDecoder.getUserId(jwtDecoder.extractRaw(authHeader));
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getMyTeacherLeave(teacherId)));
+        String token = jwtDecoder.extractRaw(authHeader);
+        Long teacherId = jwtDecoder.getUserId(token);
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getMyTeacherLeave(teacherId, jwtDecoder.getSchoolId(token))));
     }
 
     // ---- Leave Reasons (Admin-managed, bilingual English + Tamil) ----
@@ -375,8 +383,9 @@ public class AttendanceController {
      * GET /api/attendance/leave-reasons — Active reasons for parent dropdown.
      */
     @GetMapping("/leave-reasons")
-    public ResponseEntity<ApiResponse<List<LeaveReason>>> getActiveLeaveReasons() {
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getActiveLeaveReasons()));
+    public ResponseEntity<ApiResponse<List<LeaveReason>>> getActiveLeaveReasons(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getActiveLeaveReasons(resolveSchoolId(authHeader))));
     }
 
     /**
@@ -387,7 +396,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<LeaveReason>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllLeaveReasons()));
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getAllLeaveReasons(resolveSchoolId(authHeader))));
     }
 
     /**
@@ -399,7 +408,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        LeaveReason created = attendanceService.createLeaveReason(reason);
+        LeaveReason created = attendanceService.createLeaveReason(reason, resolveSchoolId(authHeader));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Leave reason created", created));
     }
@@ -414,7 +423,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success("Leave reason updated", attendanceService.updateLeaveReason(id, reason)));
+        return ResponseEntity.ok(ApiResponse.success("Leave reason updated", attendanceService.updateLeaveReason(id, reason, resolveSchoolId(authHeader))));
     }
 
     /**
@@ -427,7 +436,7 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<Void>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        attendanceService.deactivateLeaveReason(id);
+        attendanceService.deactivateLeaveReason(id, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success("Leave reason deactivated", null));
     }
 
@@ -440,6 +449,12 @@ public class AttendanceController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success("Leave reason reactivated", attendanceService.reactivateLeaveReason(id)));
+        return ResponseEntity.ok(ApiResponse.success("Leave reason reactivated", attendanceService.reactivateLeaveReason(id, resolveSchoolId(authHeader))));
+    }
+
+    private Long resolveSchoolId(String authHeader) {
+        if (authHeader == null) return null;
+        String token = jwtDecoder.extractRaw(authHeader);
+        return token != null ? jwtDecoder.getSchoolId(token) : null;
     }
 }

@@ -20,4 +20,10 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     Optional<Attendance> findByPersonTypeAndPersonIdAndDate(PersonType personType, Long personId, LocalDate date);
 
     List<Attendance> findByPersonTypeAndDate(PersonType personType, LocalDate date);
+
+    List<Attendance> findByPersonTypeAndPersonIdAndSchoolId(PersonType personType, Long personId, Long schoolId);
+
+    Optional<Attendance> findByPersonTypeAndPersonIdAndDateAndSchoolId(PersonType personType, Long personId, LocalDate date, Long schoolId);
+
+    List<Attendance> findByPersonTypeAndDateAndSchoolId(PersonType personType, LocalDate date, Long schoolId);
 }

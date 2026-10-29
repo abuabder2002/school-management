@@ -31,4 +31,6 @@ public class Holiday {
     /** PUBLIC or SCHOOL */
     @Column(nullable = false)
     private String holidayType;
+
+    private Long schoolId;
 }

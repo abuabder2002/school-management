@@ -27,12 +27,12 @@ public class StudentServiceClient {
     private static final String LB_BASE = "http://STUDENT-SERVICE/api/students";
     private static final String DIRECT_BASE = "http://localhost:8082/api/students";
 
-    public List<StudentInfoDTO> getAllStudents() {
+    public List<StudentInfoDTO> getAllStudents(Long schoolId) {
         try {
-            return fetchAllStudentsPaged(loadBalancedRestTemplate, URI.create(LB_BASE + "?page=1&pageSize=10000"));
+            return fetchAllStudentsPaged(loadBalancedRestTemplate, URI.create(LB_BASE + "?page=1&pageSize=10000&schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchAllStudentsPaged(directRestTemplate, URI.create(DIRECT_BASE + "?page=1&pageSize=10000"));
+                return fetchAllStudentsPaged(directRestTemplate, URI.create(DIRECT_BASE + "?page=1&pageSize=10000&schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch all students: {}", e2.getMessage());
                 return Collections.emptyList();
@@ -40,13 +40,13 @@ public class StudentServiceClient {
         }
     }
 
-    public StudentInfoDTO getStudentById(Long id) {
+    public StudentInfoDTO getStudentById(Long id, Long schoolId) {
         if (id == null) return null;
         try {
-            return fetchStudent(loadBalancedRestTemplate, URI.create(LB_BASE + "/" + id));
+            return fetchStudent(loadBalancedRestTemplate, URI.create(LB_BASE + "/" + id + "?schoolId=" + schoolId));
         } catch (Exception e1) {
             try {
-                return fetchStudent(directRestTemplate, URI.create(DIRECT_BASE + "/" + id));
+                return fetchStudent(directRestTemplate, URI.create(DIRECT_BASE + "/" + id + "?schoolId=" + schoolId));
             } catch (Exception e2) {
                 log.error("Failed to fetch student by id {}: {}", id, e2.getMessage());
                 return null;
