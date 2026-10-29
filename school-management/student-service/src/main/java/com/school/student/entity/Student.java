@@ -20,7 +20,10 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    // Unique per school, not globally: two different schools may each have their own "001".
+    // Enforced by a composite unique constraint (admission_number, school_id) — see
+    // SchoolIdBackfillRunner, which replaces the old global-unique constraint with it.
+    @Column(nullable = false)
     private String admissionNumber;
 
     @Column(nullable = false)

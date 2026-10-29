@@ -30,15 +30,11 @@ public class ExcelExportService {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-    public byte[] generateBackup() throws IOException {
-        return generateBackup(null);
-    }
-
-    public byte[] generateBackup(String className) throws IOException {
+    public byte[] generateBackup(String className, Long schoolId) throws IOException {
         boolean filterByClass = className != null && !className.isBlank()
                 && !"ALL".equalsIgnoreCase(className.trim()) && !"ALL CLASSES".equalsIgnoreCase(className.trim());
 
-        List<Student> students = studentRepository.findAll().stream()
+        List<Student> students = studentRepository.findBySchoolId(schoolId).stream()
                 .filter(s -> !filterByClass || AcademicClassOrder.isClassMatch(s.getClassName(), className))
                 .sorted(Comparator
                         .comparingInt((Student s) -> AcademicClassOrder.getClassRank(s.getClassName()))

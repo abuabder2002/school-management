@@ -114,21 +114,21 @@ public class StudentService {
                 .toList();
     }
 
-    public List<StudentDTO> getActiveStudentsByClass(String className) {
-        return studentRepository.findByClassNameAndIsActiveTrue(className).stream()
+    public List<StudentDTO> getActiveStudentsByClass(String className, Long schoolId) {
+        return studentRepository.findByClassNameAndIsActiveTrueAndSchoolId(className, schoolId).stream()
                 .map(this::toDTO)
                 .sorted(java.util.Comparator.comparing(StudentDTO::getName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
-    public List<String> getDistinctClasses() {
-        return studentRepository.findDistinctClassNames().stream()
+    public List<String> getDistinctClasses(Long schoolId) {
+        return studentRepository.findDistinctClassNamesBySchoolId(schoolId).stream()
                 .sorted(com.school.student.util.AcademicClassOrder.CLASS_COMPARATOR)
                 .toList();
     }
 
-    public java.util.Map<String, List<StudentDTO>> getActiveStudentsGroupedByClass() {
-        return studentRepository.findByIsActiveTrue().stream()
+    public java.util.Map<String, List<StudentDTO>> getActiveStudentsGroupedByClass(Long schoolId) {
+        return studentRepository.findByIsActiveTrueAndSchoolId(schoolId).stream()
                 .filter(s -> s.getClassName() != null && !s.getClassName().isBlank())
                 .map(this::toDTO)
                 .collect(java.util.stream.Collectors.groupingBy(StudentDTO::getClassName));
@@ -161,7 +161,7 @@ public class StudentService {
             throw new BadRequestException("Please provide at least one Father Name, Mother Name, or Guardian Name.");
         }
 
-        if (studentRepository.existsByAdmissionNumber(dto.getAdmissionNumber())) {
+        if (studentRepository.existsByAdmissionNumberAndSchoolId(dto.getAdmissionNumber(), schoolId)) {
             throw new BadRequestException("Admission number already exists: " + dto.getAdmissionNumber());
         }
         if (studentRepository.isDuplicateStudent(dto.getName(), dto.getFatherName(), dto.getMotherName(), dto.getGuardianName(), dto.getAddress(), dto.getDateOfBirth())) {
@@ -315,6 +315,7 @@ public class StudentService {
                             .section(s.getSection())
                             .phoneNumber(s.getPhoneNumber())
                             .isActive(s.getIsActive())
+                            .schoolId(s.getSchoolId())
                             .build();
                 }
             }

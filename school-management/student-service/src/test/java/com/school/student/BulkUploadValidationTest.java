@@ -96,7 +96,7 @@ public class BulkUploadValidationTest {
     @Test
     @DisplayName("Requirements 1, 4, 5, 9, 10, 12: Clean Excel Template Structure and Roman numeral Class X")
     void testClassSpecificTemplateGeneration() throws Exception {
-        byte[] excelBytes = excelImportService.generateTemplate("Class 10");
+        byte[] excelBytes = excelImportService.generateTemplate("Class 10", 1L);
         assertNotNull(excelBytes);
         assertTrue(excelBytes.length > 0);
 
@@ -187,7 +187,7 @@ public class BulkUploadValidationTest {
     @Test
     @DisplayName("Requirement 7 & 13: Upload unchanged template -> No new students, all exist")
     void testUnchangedTemplateUpload() throws Exception {
-        byte[] excelBytes = excelImportService.generateTemplate("Class 10");
+        byte[] excelBytes = excelImportService.generateTemplate("Class 10", 1L);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "Class_10_template.xlsx",
@@ -195,7 +195,7 @@ public class BulkUploadValidationTest {
                 excelBytes
         );
 
-        BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10");
+        BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10", 1L);
         assertTrue(result.isSuccess(), "Unchanged file validation should succeed: " + result.getMessage());
         assertTrue(result.isCanCommit(), "Should be safe to commit");
         assertEquals(0, result.getInsertedCount(), "Inserted count must be 0");
@@ -235,7 +235,7 @@ public class BulkUploadValidationTest {
                     out.toByteArray()
             );
 
-            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10");
+            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10", 1L);
             assertFalse(result.isSuccess(), "Should fail class validation");
             assertTrue(result.getErrorCount() > 0);
             assertTrue(result.getErrors().stream().anyMatch(e ->
@@ -279,7 +279,7 @@ public class BulkUploadValidationTest {
                     out.toByteArray()
             );
 
-            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10");
+            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10", 1L);
             assertFalse(result.isSuccess(), "Should fail on duplicate admission number in file");
             assertTrue(result.getErrors().stream().anyMatch(e ->
                     e.getErrorMessage().contains("Duplicate Admission Number ADM-9999 found in the uploaded Excel.")
@@ -290,7 +290,7 @@ public class BulkUploadValidationTest {
     @Test
     @DisplayName("Requirement 11 & 12: Add new student with Roman numeral X in Class 10 template")
     void testAddNewStudentWithRomanNumeralX() throws Exception {
-        byte[] excelBytes = excelImportService.generateTemplate("Class 10");
+        byte[] excelBytes = excelImportService.generateTemplate("Class 10", 1L);
 
         // Open the template, fill the first blank row with a new student
         try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(excelBytes));
@@ -327,7 +327,7 @@ public class BulkUploadValidationTest {
                     out.toByteArray()
             );
 
-            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10");
+            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10", 1L);
             assertTrue(result.isSuccess(), "Validation should succeed for new student with Class X: " + result.getMessage());
             assertEquals(1, result.getInsertedCount(), "Inserted count should be 1");
             assertEquals(0, result.getErrorCount(), "Errors should be 0");
@@ -365,7 +365,7 @@ public class BulkUploadValidationTest {
                     out.toByteArray()
             );
 
-            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10");
+            BulkUploadResult result = excelImportService.validateBulkUpload(file, "Class 10", 1L);
             assertFalse(result.isSuccess(), "Should fail on invalid date and mobile number");
             assertTrue(result.getErrorCount() >= 2);
             assertTrue(result.getErrors().stream().anyMatch(e -> e.getErrorMessage().contains("Invalid DOB") || "Invalid DOB".equals(e.getErrorType())), "Should report invalid DOB");
@@ -376,7 +376,7 @@ public class BulkUploadValidationTest {
     @Test
     @DisplayName("Requirement 6: Main Generic Template has Class dropdown with all 14 classes")
     void testGenericTemplateGeneration() throws Exception {
-        byte[] excelBytes = excelImportService.generateTemplate(null);
+        byte[] excelBytes = excelImportService.generateTemplate(null, 1L);
         assertNotNull(excelBytes);
 
         try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(excelBytes))) {

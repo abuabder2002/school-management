@@ -73,6 +73,16 @@ public class StudentController {
         return token != null ? jwtDecoder.getSchoolId(token) : null;
     }
 
+    /**
+     * Resolves schoolId for an endpoint also called internally (no Authorization header, by the
+     * codebase's existing internal-call convention): an explicit schoolId query param from a
+     * trusted internal caller takes priority; otherwise fall back to the external caller's JWT.
+     */
+    private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
+        if (schoolIdParam != null) return schoolIdParam;
+        return resolveSchoolId(authHeader);
+    }
+
     /** GET /api/students */
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> searchStudents(
@@ -81,11 +91,15 @@ public class StudentController {
             @RequestParam(value = "status", required = false, defaultValue = "All") String status,
             @RequestParam(value = "page", defaultValue = "1") int page, // UI is 1-based, Spring Data is 0-based
             @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<java.util.Map<String, Object>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
 
-        Long schoolId = resolveSchoolId(authHeader);
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
+        }
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page - 1, pageSize, org.springframework.data.domain.Sort.by("name").ascending());
         org.springframework.data.domain.Page<StudentDTO> studentPage = studentService.searchStudents(search, className, status, pageable, schoolId);
 
@@ -119,10 +133,15 @@ public class StudentController {
     /** GET /api/students/classes — Distinct classes existing in Student Directory */
     @GetMapping("/classes")
     public ResponseEntity<ApiResponse<List<String>>> getDistinctClasses(
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<String>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
-        List<String> classes = studentService.getDistinctClasses();
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
+        }
+        List<String> classes = studentService.getDistinctClasses(schoolId);
         return ResponseEntity.ok(ApiResponse.success(classes));
     }
 
@@ -130,20 +149,30 @@ public class StudentController {
     @GetMapping("/class/{className}/active")
     public ResponseEntity<ApiResponse<List<StudentDTO>>> getActiveStudentsByClass(
             @PathVariable("className") String className,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<StudentDTO>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
-        List<StudentDTO> students = studentService.getActiveStudentsByClass(className);
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
+        }
+        List<StudentDTO> students = studentService.getActiveStudentsByClass(className, schoolId);
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
     /** GET /api/students/active-by-class — All active students grouped by class */
     @GetMapping("/active-by-class")
     public ResponseEntity<ApiResponse<java.util.Map<String, List<StudentDTO>>>> getActiveStudentsGroupedByClass(
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<java.util.Map<String, List<StudentDTO>>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
         if (denied != null) return denied;
-        return ResponseEntity.ok(ApiResponse.success(studentService.getActiveStudentsGroupedByClass()));
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(studentService.getActiveStudentsGroupedByClass(schoolId)));
     }
 
     /**
@@ -154,8 +183,9 @@ public class StudentController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentDTO>> getStudentById(
             @PathVariable("id") Long id,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        Long schoolId = null;
+        Long schoolId = schoolIdParam;
         if (authHeader != null) {
             String token = jwtDecoder.extractRaw(authHeader);
             if (token == null || !jwtDecoder.isValidToken(token)) {
@@ -318,7 +348,7 @@ public class StudentController {
         }
 
         try {
-            ImportResult result = excelImportService.importStudents(file);
+            ImportResult result = excelImportService.importStudents(file, resolveSchoolId(authHeader));
             return ResponseEntity.ok(ApiResponse.success("Import completed", result));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -337,7 +367,7 @@ public class StudentController {
         ResponseEntity<ApiResponse<Object>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
         try {
-            byte[] excelBytes = excelExportService.generateBackup(className);
+            byte[] excelBytes = excelExportService.generateBackup(className, resolveSchoolId(authHeader));
             boolean isClassScoped = className != null && !className.isBlank()
                     && !"ALL".equalsIgnoreCase(className.trim()) && !"ALL CLASSES".equalsIgnoreCase(className.trim());
             String filename = isClassScoped
@@ -365,7 +395,7 @@ public class StudentController {
         ResponseEntity<ApiResponse<Object>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
         try {
-            byte[] templateBytes = excelImportService.generateTemplate(className);
+            byte[] templateBytes = excelImportService.generateTemplate(className, resolveSchoolId(authHeader));
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
@@ -395,7 +425,7 @@ public class StudentController {
         if (denied != null) return denied;
 
         try {
-            com.school.student.dto.BulkUploadResult result = excelImportService.validateBulkUpload(file, className);
+            com.school.student.dto.BulkUploadResult result = excelImportService.validateBulkUpload(file, className, resolveSchoolId(request.getHeader("Authorization")));
             return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -418,7 +448,7 @@ public class StudentController {
         if (denied != null) return denied;
 
         try {
-            com.school.student.dto.BulkUploadResult result = excelImportService.processBulkUpload(file, className);
+            com.school.student.dto.BulkUploadResult result = excelImportService.processBulkUpload(file, className, resolveSchoolId(request.getHeader("Authorization")));
             return ResponseEntity.ok(ApiResponse.success(result.getMessage(), result));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

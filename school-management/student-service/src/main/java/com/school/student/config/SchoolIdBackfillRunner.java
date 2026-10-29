@@ -35,5 +35,18 @@ public class SchoolIdBackfillRunner implements CommandLineRunner {
         } catch (Exception e) {
             log.warn("Could not backfill students.school_id (non-fatal): {}", e.getMessage());
         }
+        // admissionNumber used to be globally unique; two different schools must be able to reuse
+        // the same admission number (e.g. both start numbering at "001"). Hibernate's ddl-auto
+        // never drops a constraint that's no longer declared on the entity, so this replaces it
+        // explicitly. Idempotent: DROP ... IF EXISTS, then re-add only if the composite one is
+        // missing (duplicate ADD CONSTRAINT would error on every later boot otherwise).
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE students DROP CONSTRAINT IF EXISTS uk4ijilwehsq4n3vhrdlq722lnc");
+            stmt.execute("ALTER TABLE students DROP CONSTRAINT IF EXISTS uk_students_admission_school");
+            stmt.execute("ALTER TABLE students ADD CONSTRAINT uk_students_admission_school UNIQUE (admission_number, school_id)");
+            log.info("students admission_number uniqueness verified/repaired as (admission_number, school_id)");
+        } catch (Exception e) {
+            log.warn("Could not repair students admission_number uniqueness (non-fatal): {}", e.getMessage());
+        }
     }
 }

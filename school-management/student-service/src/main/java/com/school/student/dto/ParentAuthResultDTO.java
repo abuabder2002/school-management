@@ -17,4 +17,5 @@ public class ParentAuthResultDTO {
     private String section;
     private String phoneNumber;
     private Boolean isActive;
+    private Long schoolId;
 }

@@ -40,16 +40,25 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
 
     List<Student> findByClassNameAndIsActiveTrue(String className);
 
+    List<Student> findByClassNameAndIsActiveTrueAndSchoolId(String className, Long schoolId);
+
     List<Student> findByIsActiveTrue();
+
+    List<Student> findByIsActiveTrueAndSchoolId(Long schoolId);
 
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT s.className FROM Student s WHERE s.className IS NOT NULL ORDER BY s.className")
     List<String> findDistinctClassNames();
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT s.className FROM Student s WHERE s.className IS NOT NULL AND s.schoolId = :schoolId ORDER BY s.className")
+    List<String> findDistinctClassNamesBySchoolId(@org.springframework.data.repository.query.Param("schoolId") Long schoolId);
 
     List<Student> findByParentId(Long parentId);
 
     List<Student> findByAdmissionNumberIn(java.util.Collection<String> admissionNumbers);
 
     boolean existsByAdmissionNumber(String admissionNumber);
+
+    boolean existsByAdmissionNumberAndSchoolId(String admissionNumber, Long schoolId);
 
     List<Student> findByNameIgnoreCase(String name);
 

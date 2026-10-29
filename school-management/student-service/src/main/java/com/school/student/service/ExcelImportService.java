@@ -92,11 +92,11 @@ public class ExcelImportService {
     // 1. TEMPLATE GENERATION
     // =========================================================================
 
-    public byte[] generateTemplate() throws IOException {
-        return generateTemplate(null);
+    public byte[] generateTemplate(Long schoolId) throws IOException {
+        return generateTemplate(null, schoolId);
     }
 
-    public byte[] generateTemplate(String className) throws IOException {
+    public byte[] generateTemplate(String className, Long schoolId) throws IOException {
         boolean isClassSpecific = className != null && !className.isBlank()
                 && !"ALL".equalsIgnoreCase(className.trim())
                 && !"ALL CLASSES".equalsIgnoreCase(className.trim());
@@ -183,7 +183,7 @@ public class ExcelImportService {
 
             if (isClassSpecific) {
                 // Fetch existing students of this specific class
-                List<Student> classStudents = studentRepository.findAll().stream()
+                List<Student> classStudents = studentRepository.findBySchoolId(schoolId).stream()
                         .filter(s -> AcademicClassOrder.isClassMatch(s.getClassName(), targetAppClass))
                         .sorted((s1, s2) -> {
                             String sec1 = s1.getSection() != null ? s1.getSection() : "";
@@ -419,25 +419,16 @@ public class ExcelImportService {
     // 2. TWO-PHASE VALIDATE & COMMIT WORKFLOW
     // =========================================================================
 
-    public BulkUploadResult validateBulkUpload(MultipartFile file) throws IOException {
-        return validateBulkUpload(file, null);
-    }
-
-    public BulkUploadResult validateBulkUpload(MultipartFile file, String expectedClassName) throws IOException {
-        return executeBulkUpload(file, expectedClassName, false);
+    public BulkUploadResult validateBulkUpload(MultipartFile file, String expectedClassName, Long schoolId) throws IOException {
+        return executeBulkUpload(file, expectedClassName, false, schoolId);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public BulkUploadResult processBulkUpload(MultipartFile file) throws IOException {
-        return processBulkUpload(file, null);
+    public BulkUploadResult processBulkUpload(MultipartFile file, String expectedClassName, Long schoolId) throws IOException {
+        return executeBulkUpload(file, expectedClassName, true, schoolId);
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public BulkUploadResult processBulkUpload(MultipartFile file, String expectedClassName) throws IOException {
-        return executeBulkUpload(file, expectedClassName, true);
-    }
-
-    private BulkUploadResult executeBulkUpload(MultipartFile file, String expectedClassName, boolean commitToDatabase) throws IOException {
+    private BulkUploadResult executeBulkUpload(MultipartFile file, String expectedClassName, boolean commitToDatabase, Long schoolId) throws IOException {
         if (file.isEmpty()) {
             return BulkUploadResult.builder()
                     .success(false)
@@ -471,7 +462,7 @@ public class ExcelImportService {
         List<ParsedStudentRow> parsedRows = new ArrayList<>();
 
         Map<String, Student> dbStudentMap = new HashMap<>();
-        for (Student s : studentRepository.findAll()) {
+        for (Student s : studentRepository.findBySchoolId(schoolId)) {
             if (s.getAdmissionNumber() != null && !s.getAdmissionNumber().isBlank()) {
                 dbStudentMap.put(s.getAdmissionNumber().trim().toLowerCase(), s);
             }
@@ -708,7 +699,7 @@ public class ExcelImportService {
             }
 
             // Cross-student identity duplication check (different Adm No, but same student)
-            List<Student> allDbStudents = studentRepository.findAll();
+            List<Student> allDbStudents = studentRepository.findBySchoolId(schoolId);
             for (ParsedStudentRow pr : parsedRows) {
                 if (pr.normName.isEmpty()) continue;
 
@@ -849,6 +840,7 @@ public class ExcelImportService {
                             .isActive(true)
                             .phoneNumber(pr.phoneNumber != null ? pr.phoneNumber.trim() : null)
                             .passwordHash((pr.password != null && !pr.password.isBlank()) ? passwordEncoder.encode(pr.password.trim()) : null)
+                            .schoolId(schoolId)
                             .build();
 
                     studentsToSave.add(s);
@@ -1054,8 +1046,8 @@ public class ExcelImportService {
         }
     }
 
-    public ImportResult importStudents(MultipartFile file) throws IOException {
-        BulkUploadResult bulkResult = processBulkUpload(file);
+    public ImportResult importStudents(MultipartFile file, Long schoolId) throws IOException {
+        BulkUploadResult bulkResult = processBulkUpload(file, null, schoolId);
         ImportResult legacy = ImportResult.builder().build();
         legacy.setTotal(bulkResult.getTotalRows());
         legacy.setImported(bulkResult.getInsertedCount());
