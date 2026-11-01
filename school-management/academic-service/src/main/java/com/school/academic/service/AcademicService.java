@@ -485,6 +485,11 @@ public class AcademicService {
                 .academicYear(dto.getAcademicYear())
                 .subjects(toSubjectEntities(dto.getSubjects()))
                 .totalMarks(sumMarks(dto.getSubjects()))
+                .schoolName(dto.getSchoolName())
+                .area(dto.getArea())
+                .pincode(dto.getPincode())
+                .schoolPhone(dto.getSchoolPhone())
+                .photo(dto.getPhoto())
                 .schoolId(schoolId)
                 .build();
         BoardResult saved = boardResultRepository.save(result);
@@ -501,6 +506,11 @@ public class AcademicService {
         existing.getSubjects().clear();
         existing.getSubjects().addAll(toSubjectEntities(dto.getSubjects()));
         existing.setTotalMarks(sumMarks(dto.getSubjects()));
+        existing.setSchoolName(dto.getSchoolName());
+        existing.setArea(dto.getArea());
+        existing.setPincode(dto.getPincode());
+        existing.setSchoolPhone(dto.getSchoolPhone());
+        existing.setPhoto(dto.getPhoto());
         BoardResult saved = boardResultRepository.save(existing);
         return toBoardResultDTO(saved);
     }
@@ -592,6 +602,11 @@ public class AcademicService {
                 .academicYear(result.getAcademicYear())
                 .subjects(subjects)
                 .totalMarks(result.getTotalMarks())
+                .schoolName(result.getSchoolName())
+                .area(result.getArea())
+                .pincode(result.getPincode())
+                .schoolPhone(result.getSchoolPhone())
+                .photo(result.getPhoto())
                 .createdAt(result.getCreatedAt())
                 .updatedAt(result.getUpdatedAt())
                 .build();

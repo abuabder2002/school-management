@@ -48,6 +48,18 @@ public class BoardResult {
 
     private Double totalMarks;
 
+    private String schoolName;
+
+    private String area;
+
+    private String pincode;
+
+    private String schoolPhone;
+
+    /** Base64 data URI (e.g. "data:image/jpeg;base64,..."), resized/compressed client-side before upload. */
+    @Column(columnDefinition = "TEXT")
+    private String photo;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

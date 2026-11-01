@@ -23,7 +23,12 @@ const emptyForm = () => ({
   board: 'STATE_BOARD',
   standard: 'X',
   academicYear: defaultAcademicYear(),
-  subjects: [{ subjectName: '', marks: '' }],
+  subjects: [{ subjectName: '', marks: '', customSubject: false }],
+  schoolName: '',
+  area: '',
+  pincode: '',
+  schoolPhone: '',
+  photo: '',
 });
 
 export const BoardResultsPage = () => {
@@ -35,6 +40,7 @@ export const BoardResultsPage = () => {
   const [studentsMap, setStudentsMap] = useState({});
   const [studentQuery, setStudentQuery] = useState('');
   const [classFilter, setClassFilter] = useState('');
+  const [subjectOptions, setSubjectOptions] = useState([]);
 
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
@@ -44,6 +50,7 @@ export const BoardResultsPage = () => {
   useEffect(() => {
     loadResults();
     loadStudents();
+    loadSubjectOptions();
   }, []);
 
   const loadResults = async () => {
@@ -68,6 +75,17 @@ export const BoardResultsPage = () => {
       setStudentsMap(map);
     } catch {
       addToast('Failed to load students', 'error');
+    }
+  };
+
+  const loadSubjectOptions = async () => {
+    try {
+      const res = await academicService.getAllSubjects();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      const names = [...new Set(list.map((s) => s.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      setSubjectOptions(names);
+    } catch {
+      // Dropdown just falls back to manual entry for every row.
     }
   };
 
@@ -98,7 +116,7 @@ export const BoardResultsPage = () => {
   };
 
   const addSubjectRow = () => {
-    setForm({ ...form, subjects: [...form.subjects, { subjectName: '', marks: '' }] });
+    setForm({ ...form, subjects: [...form.subjects, { subjectName: '', marks: '', customSubject: subjectOptions.length === 0 }] });
   };
 
   const removeSubjectRow = (idx) => {
@@ -110,6 +128,47 @@ export const BoardResultsPage = () => {
     setForm({ ...form, subjects });
   };
 
+  const selectSubjectForRow = (idx, value) => {
+    if (value === '__other__') {
+      updateSubjectRow(idx, 'customSubject', true);
+      updateSubjectRow(idx, 'subjectName', '');
+    } else {
+      const subjects = form.subjects.map((s, i) => (i === idx ? { ...s, subjectName: value, customSubject: false } : s));
+      setForm({ ...form, subjects });
+    }
+  };
+
+  // Resizes/compresses a picked photo to a small JPEG data URI, same approach as the Students form.
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addToast('Please select an image file', 'warning');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 400;
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxDim) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+        } else if (height > maxDim) {
+          width = Math.round(width * (maxDim / height)); height = maxDim;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        setForm((prev) => ({ ...prev, photo: canvas.toDataURL('image/jpeg', 0.75) }));
+      };
+      img.onerror = () => addToast('Could not read that image', 'error');
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const openEdit = (result) => {
     setEditingId(result.id);
     setForm({
@@ -117,7 +176,14 @@ export const BoardResultsPage = () => {
       board: result.board,
       standard: result.standard,
       academicYear: result.academicYear,
-      subjects: result.subjects && result.subjects.length > 0 ? result.subjects.map((s) => ({ subjectName: s.subjectName, marks: s.marks })) : [{ subjectName: '', marks: '' }],
+      subjects: result.subjects && result.subjects.length > 0
+        ? result.subjects.map((s) => ({ subjectName: s.subjectName, marks: s.marks, customSubject: !subjectOptions.includes(s.subjectName) }))
+        : [{ subjectName: '', marks: '', customSubject: false }],
+      schoolName: result.schoolName || '',
+      area: result.area || '',
+      pincode: result.pincode || '',
+      schoolPhone: result.schoolPhone || '',
+      photo: result.photo || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -155,6 +221,11 @@ export const BoardResultsPage = () => {
       standard: form.standard,
       academicYear: form.academicYear.trim(),
       subjects: cleanSubjects,
+      schoolName: form.schoolName.trim(),
+      area: form.area.trim(),
+      pincode: form.pincode.trim(),
+      schoolPhone: form.schoolPhone.trim(),
+      photo: form.photo || undefined,
     };
     try {
       setSaving(true);
@@ -181,7 +252,7 @@ export const BoardResultsPage = () => {
       <Breadcrumb items={[{ label: 'Board Results' }]} />
       <div className="page-header" style={{ marginBottom: '1.25rem' }}>
         <div>
-          <h1 className="page-title">Board Results</h1>
+          <h1 className="page-title">Add Student — Board Result</h1>
           <p className="page-subtitle">Record Class X / XII board exam results, subject by subject.</p>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={loadResults} disabled={loading}>
@@ -198,6 +269,9 @@ export const BoardResultsPage = () => {
         </div>
         <div className="card-body">
           <form onSubmit={handleSubmit}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
+              Add Student
+            </div>
             <div className="form-group">
               <label className="form-label">Student *</label>
               {!form.studentId ? (
@@ -269,7 +343,7 @@ export const BoardResultsPage = () => {
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Standard *</label>
+                <label className="form-label">Class *</label>
                 <select className="form-select" value={form.standard} onChange={(e) => setForm({ ...form, standard: e.target.value })}>
                   <option value="X">X</option>
                   <option value="XII">XII</option>
@@ -288,18 +362,36 @@ export const BoardResultsPage = () => {
               </div>
             </div>
 
-            <div style={{ marginTop: '1.25rem' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', margin: '1.5rem 0 0.6rem' }}>
+              Board Result
+            </div>
+            <div>
               <label className="form-label">Subjects & Marks *</label>
               {form.subjects.map((s, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    style={{ flex: 2 }}
-                    placeholder="Subject name"
-                    value={s.subjectName}
-                    onChange={(e) => updateSubjectRow(idx, 'subjectName', e.target.value)}
-                  />
+                  {s.customSubject || subjectOptions.length === 0 ? (
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ flex: 2 }}
+                      placeholder="Subject name"
+                      value={s.subjectName}
+                      onChange={(e) => updateSubjectRow(idx, 'subjectName', e.target.value)}
+                    />
+                  ) : (
+                    <select
+                      className="form-select"
+                      style={{ flex: 2 }}
+                      value={s.subjectName}
+                      onChange={(e) => selectSubjectForRow(idx, e.target.value)}
+                    >
+                      <option value="">Select subject</option>
+                      {subjectOptions.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                      <option value="__other__">Other (type manually)...</option>
+                    </select>
+                  )}
                   <input
                     type="number"
                     className="form-input"
@@ -324,6 +416,75 @@ export const BoardResultsPage = () => {
               <button type="button" className="btn btn-secondary btn-sm" onClick={addSubjectRow}>
                 <Plus size={13} /> Add Subject
               </button>
+            </div>
+
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', margin: '1.5rem 0 0.6rem' }}>
+              School Details
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">School Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="School name"
+                  value={form.schoolName}
+                  onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Area</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Area"
+                  value={form.area}
+                  onChange={(e) => setForm({ ...form, area: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Pincode</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Pincode"
+                  value={form.pincode}
+                  onChange={(e) => setForm({ ...form, pincode: e.target.value })}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">School Phone</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="School phone"
+                  value={form.schoolPhone}
+                  onChange={(e) => setForm({ ...form, schoolPhone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1.25rem' }}>
+              <label className="form-label">Student Photo</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {form.photo ? (
+                  <img
+                    src={form.photo}
+                    alt="Student preview"
+                    style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-color)' }}
+                  />
+                ) : (
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--bg-secondary, #f1f5f9)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                    No photo
+                  </div>
+                )}
+                <input type="file" accept="image/*" className="form-input" onChange={handlePhotoSelect} style={{ flex: 1 }} />
+                {form.photo && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm({ ...form, photo: '' })}>
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
@@ -353,36 +514,40 @@ export const BoardResultsPage = () => {
             <thead>
               <tr>
                 <th>S.No</th>
-                <th>Student</th>
-                <th>Board</th>
-                <th>Standard</th>
-                <th>Academic Year</th>
-                <th>Subjects</th>
+                <th>Student Name</th>
                 <th>Total</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>Loading...</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>Loading...</td></tr>
               ) : results.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>No board results recorded yet.</td></tr>
+                <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>No board results recorded yet.</td></tr>
               ) : (
                 results.map((r, idx) => (
                   <tr key={r.id}>
                     <td>{idx + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{r.studentName}<div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.admissionNumber}</div></td>
-                    <td><span className="badge badge-primary">{boardLabel(r.board)}</span></td>
-                    <td>{r.standard}</td>
-                    <td>{r.academicYear}</td>
-                    <td style={{ fontSize: '0.8125rem', maxWidth: '280px' }}>
-                      {(r.subjects || []).map((s) => `${s.subjectName}: ${s.marks}`).join(', ')}
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        {r.photo ? (
+                          <img src={r.photo} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-color)' }} />
+                        ) : (
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-secondary, #f1f5f9)', flexShrink: 0 }} />
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{r.studentName}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {boardLabel(r.board)} · {r.standard} · {r.academicYear}
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td style={{ fontWeight: 700 }}>{r.totalMarks}</td>
                     <td style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
-                        <button className="btn btn-sm btn-secondary" onClick={() => openEdit(r)}><Edit2 size={13} /></button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}><Trash2 size={13} /></button>
+                        <button className="btn btn-sm btn-secondary" onClick={() => openEdit(r)}><Edit2 size={13} /> Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}><Trash2 size={13} /> Del</button>
                       </div>
                     </td>
                   </tr>

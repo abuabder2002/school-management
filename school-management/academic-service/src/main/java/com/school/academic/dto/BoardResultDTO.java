@@ -37,6 +37,12 @@ public class BoardResultDTO {
 
     private Double totalMarks;
 
+    private String schoolName;
+    private String area;
+    private String pincode;
+    private String schoolPhone;
+    private String photo;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
