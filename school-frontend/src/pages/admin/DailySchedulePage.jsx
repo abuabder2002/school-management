@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { scheduleService } from '../../services/scheduleService';
 import { authService } from '../../services/authService';
+import { academicService } from '../../services/academicService';
+import { studentService } from '../../services/studentService';
 import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Edit2, Trash2 } from 'lucide-react';
-import { CLASS_CONFIG, toDisplayClassName } from '../../utils/academicClassOrder';
-
-const SECTIONS = ['A', 'B', 'C', 'D'];
+import { toDisplayClassName, compareAcademicClasses, isClassMatch } from '../../utils/academicClassOrder';
 
 const emptyForm = () => ({
   scheduleDate: new Date().toISOString().slice(0, 10),
-  className: 'Class 1',
+  className: '',
   section: '',
   subjectName: '',
   teacherName: '',
@@ -21,17 +21,47 @@ export const DailySchedulePage = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [staffOptions, setStaffOptions] = useState([]);
+  const [academicClasses, setAcademicClasses] = useState([]);
+  const [classesLoaded, setClassesLoaded] = useState(false);
+  const [students, setStudents] = useState([]);
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const { addToast } = useToast();
 
-  useEffect(() => {
-    loadStaff();
-  }, []);
+  // Only the classes/sections this school has actually added — never a fixed LKG-XII list,
+  // since one school may stop at Class 5 and another may go all the way to Class 12.
+  const classOptions = useMemo(() => {
+    const names = [...new Set(academicClasses.map((c) => c.name).filter(Boolean))];
+    return names.sort(compareAcademicClasses);
+  }, [academicClasses]);
+
+  // Sections come from the actual student roster (a class's section split is defined by its
+  // enrolled students, not the single-section-per-class AcademicClass master list).
+  const sectionOptions = useMemo(() => {
+    const sections = students
+      .filter((s) => isClassMatch(s.className, form.className))
+      .map((s) => s.section)
+      .filter(Boolean);
+    return [...new Set(sections)].sort();
+  }, [students, form.className]);
 
   useEffect(() => {
+    loadStaff();
+    loadAcademicClasses();
+    loadStudents();
+  }, []);
+
+  // Default to the school's first configured class once loaded, instead of a hardcoded one.
+  useEffect(() => {
+    if (classesLoaded && !form.className && classOptions.length > 0) {
+      setForm((f) => ({ ...f, className: classOptions[0] }));
+    }
+  }, [classesLoaded, classOptions, form.className]);
+
+  useEffect(() => {
+    if (!form.className) return;
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.className, form.section]);
@@ -44,6 +74,27 @@ export const DailySchedulePage = () => {
       }
     } catch {
       // non-fatal — Staff dropdown just stays empty
+    }
+  };
+
+  const loadAcademicClasses = async () => {
+    try {
+      const res = await academicService.getAllClasses();
+      setAcademicClasses(res.success && res.data ? res.data : []);
+    } catch {
+      addToast('Failed to load this school\'s classes', 'error');
+    } finally {
+      setClassesLoaded(true);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const res = await studentService.getAllStudents({ page: 1, pageSize: 10000, status: 'Active' });
+      const list = res?.data?.data || (Array.isArray(res?.data) ? res.data : []);
+      setStudents(list);
+    } catch {
+      // non-fatal — Section dropdown just stays empty until classes/students are picked
     }
   };
 
@@ -147,17 +198,26 @@ export const DailySchedulePage = () => {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Class</label>
-                <select className="form-select" value={form.className} onChange={(e) => setForm({ ...form, className: e.target.value })}>
-                  {CLASS_CONFIG.map((c) => (
-                    <option key={c.internalValue} value={c.internalValue}>{c.displayLabel}</option>
-                  ))}
+                <select
+                  className="form-select"
+                  value={form.className}
+                  onChange={(e) => setForm({ ...form, className: e.target.value, section: '' })}
+                  disabled={!classesLoaded || classOptions.length === 0}
+                >
+                  {classOptions.length === 0 ? (
+                    <option value="">{classesLoaded ? 'No classes added yet' : 'Loading...'}</option>
+                  ) : (
+                    classOptions.map((name) => (
+                      <option key={name} value={name}>{toDisplayClassName(name)}</option>
+                    ))
+                  )}
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Section</label>
                 <select className="form-select" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>
                   <option value="">No Section</option>
-                  {SECTIONS.map((s) => (
+                  {sectionOptions.map((s) => (
                     <option key={s} value={s}>Section {s}</option>
                   ))}
                 </select>
