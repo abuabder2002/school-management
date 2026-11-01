@@ -152,6 +152,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <BookMarked size={18} />
               <span>Leave Reasons</span>
             </NavLink>
+            <NavLink
+              to="/super-admin/board-results"
+              onClick={handleLinkClick}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <GraduationCap size={18} />
+              <span>Board Results</span>
+            </NavLink>
           </>
         )}
 
@@ -170,8 +178,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
               </NavLink>
             )}
 
-            {(isModuleEnabled('STUDENTS') || isModuleEnabled('MARKS') || isModuleEnabled('BOARD_RESULTS') || isModuleEnabled('DAILY_SCHEDULE')) && (
-              <NavGroup title="Academics" storageKey="academics" active={pathStartsWith('/admin/students', '/admin/marks', '/admin/board-results', '/admin/daily-schedule')}>
+            {(isModuleEnabled('STUDENTS') || isModuleEnabled('MARKS') || isModuleEnabled('DAILY_SCHEDULE')) && (
+              <NavGroup title="Academics" storageKey="academics" active={pathStartsWith('/admin/students', '/admin/marks', '/admin/daily-schedule')}>
                 {isModuleEnabled('STUDENTS') && (
                   <NavLink to="/admin/students" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
                     <Users size={18} /><span>Students</span>
@@ -180,11 +188,6 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 {isModuleEnabled('MARKS') && (
                   <NavLink to="/admin/marks" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
                     <Award size={18} /><span>Marks</span>
-                  </NavLink>
-                )}
-                {isModuleEnabled('BOARD_RESULTS') && (
-                  <NavLink to="/admin/board-results" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                    <GraduationCap size={18} /><span>Board Results</span>
                   </NavLink>
                 )}
                 {isModuleEnabled('DAILY_SCHEDULE') && (

@@ -83,8 +83,9 @@ public class AcademicController {
 
     @GetMapping("/subjects")
     public ResponseEntity<ApiResponse<List<Subject>>> getAllSubjects(
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllSubjects(resolveSchoolId(authHeader))));
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllSubjects(resolveSchoolId(authHeader, schoolIdParam))));
     }
 
     @GetMapping("/subjects/{id}")
@@ -350,17 +351,19 @@ public class AcademicController {
 
     @GetMapping("/board-results")
     public ResponseEntity<ApiResponse<List<BoardResultDTO>>> getAllBoardResults(
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults(resolveSchoolId(authHeader))));
+        verifyBoardResultRole(authHeader, false);
+        return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults(resolveSchoolId(authHeader, schoolIdParam))));
     }
 
     @PostMapping("/board-results")
     public ResponseEntity<ApiResponse<BoardResultDTO>> createBoardResult(
             @jakarta.validation.Valid @RequestBody BoardResultDTO dto,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyStaffRole(authHeader);
-        BoardResultDTO created = academicService.createBoardResult(dto, resolveSchoolId(authHeader));
+        verifyBoardResultRole(authHeader, false);
+        BoardResultDTO created = academicService.createBoardResult(dto, resolveSchoolId(authHeader, schoolIdParam));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Board result saved", created));
     }
 
@@ -368,17 +371,19 @@ public class AcademicController {
     public ResponseEntity<ApiResponse<BoardResultDTO>> updateBoardResult(
             @PathVariable("id") Long id,
             @jakarta.validation.Valid @RequestBody BoardResultDTO dto,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyStaffRole(authHeader);
-        return ResponseEntity.ok(ApiResponse.success("Board result updated", academicService.updateBoardResult(id, dto, resolveSchoolId(authHeader))));
+        verifyBoardResultRole(authHeader, false);
+        return ResponseEntity.ok(ApiResponse.success("Board result updated", academicService.updateBoardResult(id, dto, resolveSchoolId(authHeader, schoolIdParam))));
     }
 
     @DeleteMapping("/board-results/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteBoardResult(
             @PathVariable("id") Long id,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyAdminRole(authHeader);
-        academicService.deleteBoardResult(id, resolveSchoolId(authHeader));
+        verifyBoardResultRole(authHeader, true);
+        academicService.deleteBoardResult(id, resolveSchoolId(authHeader, schoolIdParam));
         return ResponseEntity.ok(ApiResponse.success("Board result deleted", null));
     }
 
@@ -392,6 +397,26 @@ public class AcademicController {
             if (!"ADMIN".equals(role) && !"TEACHER".equals(role)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Only Admin and Teachers are authorized to access Marks management.");
+            }
+        }
+    }
+
+    /**
+     * Board Results is the one surface Super Admin also manages directly (per-school, by
+     * explicit schoolId param — see the 2-arg {@link #resolveSchoolId}), alongside the existing
+     * Admin/Teacher access every other endpoint here already allows via verifyStaffRole/verifyAdminRole.
+     */
+    private void verifyBoardResultRole(String authHeader, boolean adminOnly) {
+        if (authHeader == null) return;
+        String token = jwtDecoder.extractRaw(authHeader);
+        if (token != null && jwtDecoder.isValidToken(token)) {
+            String role = normalizeRole(jwtDecoder.getRole(token));
+            boolean allowed = adminOnly
+                    ? ("ADMIN".equals(role) || "SUPER_ADMIN".equals(role))
+                    : ("ADMIN".equals(role) || "TEACHER".equals(role) || "SUPER_ADMIN".equals(role));
+            if (!allowed) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Only Admin, Teachers, or Super Admin are authorized to access Board Results.");
             }
         }
     }
@@ -417,5 +442,19 @@ public class AcademicController {
         if (authHeader == null) return null;
         String token = jwtDecoder.extractRaw(authHeader);
         return token != null ? jwtDecoder.getSchoolId(token) : null;
+    }
+
+    /**
+     * SUPER_ADMIN has no school of their own, so for them (and only them) an explicit schoolId
+     * param is trusted — it's how they say which school's Board Results / Subjects they're
+     * viewing. Every other role keeps using their own token's schoolId; the param is ignored.
+     */
+    private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
+        if (authHeader == null) return schoolIdParam;
+        String token = jwtDecoder.extractRaw(authHeader);
+        if (token != null && jwtDecoder.isValidToken(token) && "SUPER_ADMIN".equals(normalizeRole(jwtDecoder.getRole(token)))) {
+            return schoolIdParam;
+        }
+        return resolveSchoolId(authHeader);
     }
 }

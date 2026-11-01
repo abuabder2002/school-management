@@ -44,7 +44,7 @@ const LeaveReasonsPage = lazyPage(() => import('./pages/admin/LeaveReasonsPage')
 const ImportExportPage = lazyPage(() => import('./pages/admin/ImportExportPage'), 'ImportExportPage');
 const NotificationsPage = lazyPage(() => import('./pages/admin/NotificationsPage'), 'NotificationsPage');
 const ModuleAccessPage = lazyPage(() => import('./pages/admin/ModuleAccessPage'), 'ModuleAccessPage');
-const BoardResultsPage = lazyPage(() => import('./pages/admin/BoardResultsPage'), 'BoardResultsPage');
+const BoardResultsPage = lazyPage(() => import('./pages/superadmin/BoardResultsPage'), 'BoardResultsPage');
 const IdCardsPage = lazyPage(() => import('./pages/admin/IdCardsPage'), 'IdCardsPage');
 const DailySchedulePage = lazyPage(() => import('./pages/admin/DailySchedulePage'), 'DailySchedulePage');
 const VacanciesPage = lazyPage(() => import('./pages/admin/VacanciesPage'), 'VacanciesPage');
@@ -117,6 +117,7 @@ export const App = () => {
                 <Route path="schools" element={<AddSchoolPage />} />
                 <Route path="subscription" element={<SubscriptionPage />} />
                 <Route path="leave-reasons" element={<GlobalLeaveReasonsPage />} />
+                <Route path="board-results" element={<BoardResultsPage />} />
               </Route>
 
               {/* Admin Protected Routes */}
@@ -144,7 +145,6 @@ export const App = () => {
                 <Route path="import-export" element={<ImportExportPage />} />
                 <Route path="notifications" element={<ModuleGate moduleKey="NOTICE"><NotificationsPage /></ModuleGate>} />
                 <Route path="module-access" element={<ModuleGate moduleKey="MODULE_ACCESS"><ModuleAccessPage /></ModuleGate>} />
-                <Route path="board-results" element={<ModuleGate moduleKey="BOARD_RESULTS"><BoardResultsPage /></ModuleGate>} />
                 <Route path="id-cards" element={<ModuleGate moduleKey="ID_CARDS"><IdCardsPage /></ModuleGate>} />
                 <Route path="daily-schedule" element={<ModuleGate moduleKey="DAILY_SCHEDULE"><DailySchedulePage /></ModuleGate>} />
                 <Route path="vacancies" element={<ModuleGate moduleKey="VACANCIES"><VacanciesPage /></ModuleGate>} />

@@ -13,8 +13,10 @@ export const academicService = {
   },
 
   // Subjects
-  getAllSubjects: async () => {
-    const response = await api.get('/api/academic/subjects');
+  // schoolId is honored only for a SUPER_ADMIN caller (see academic-service's resolveSchoolId overload);
+  // every other role keeps seeing their own school regardless of what's passed.
+  getAllSubjects: async (schoolId) => {
+    const response = await api.get('/api/academic/subjects', { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
 
@@ -45,24 +47,25 @@ export const academicService = {
     return response.data;
   },
 
-  // Board Results
-  getBoardResults: async () => {
-    const response = await api.get('/api/academic/board-results');
+  // Board Results — schoolId is honored only for a SUPER_ADMIN caller; every other role
+  // (ADMIN/TEACHER) always sees/acts on their own school regardless of what's passed.
+  getBoardResults: async (schoolId) => {
+    const response = await api.get('/api/academic/board-results', { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
 
-  createBoardResult: async (data) => {
-    const response = await api.post('/api/academic/board-results', data);
+  createBoardResult: async (data, schoolId) => {
+    const response = await api.post('/api/academic/board-results', data, { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
 
-  updateBoardResult: async (id, data) => {
-    const response = await api.put(`/api/academic/board-results/${id}`, data);
+  updateBoardResult: async (id, data, schoolId) => {
+    const response = await api.put(`/api/academic/board-results/${id}`, data, { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
 
-  deleteBoardResult: async (id) => {
-    const response = await api.delete(`/api/academic/board-results/${id}`);
+  deleteBoardResult: async (id, schoolId) => {
+    const response = await api.delete(`/api/academic/board-results/${id}`, { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
 };

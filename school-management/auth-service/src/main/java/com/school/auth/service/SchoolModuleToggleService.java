@@ -34,7 +34,6 @@ public class SchoolModuleToggleService {
         MODULE_REGISTRY.put("LEAVE_REASONS", "Leave Reasons");
         MODULE_REGISTRY.put("BILLING", "Billing");
         MODULE_REGISTRY.put("MARKS", "Marks");
-        MODULE_REGISTRY.put("BOARD_RESULTS", "Board Results");
         MODULE_REGISTRY.put("ID_CARDS", "ID Cards");
         MODULE_REGISTRY.put("MODULE_ACCESS", "Module Access");
         MODULE_REGISTRY.put("DAILY_SCHEDULE", "Daily Schedule");

@@ -77,12 +77,17 @@ public class StudentController {
      * Resolves schoolId for an endpoint also called internally (no Authorization header, by the
      * codebase's existing internal-call convention). An external (JWT-bearing) caller's own
      * token always wins — schoolIdParam is only trusted when there is no Authorization header
-     * at all, i.e. a genuine internal caller. A logged-in user must never be able to override
-     * their own schoolId via a query parameter.
+     * at all (a genuine internal caller), or when the caller is SUPER_ADMIN, who has no school
+     * of their own and must explicitly say which school they're acting on. Every other logged-in
+     * role must never be able to override their own schoolId via a query parameter.
      */
     private Long resolveSchoolId(String authHeader, Long schoolIdParam) {
-        if (authHeader != null) return resolveSchoolId(authHeader);
-        return schoolIdParam;
+        if (authHeader == null) return schoolIdParam;
+        String token = jwtDecoder.extractRaw(authHeader);
+        if (token != null && jwtDecoder.isValidToken(token) && "SUPER_ADMIN".equalsIgnoreCase(jwtDecoder.getRole(token))) {
+            return schoolIdParam;
+        }
+        return resolveSchoolId(authHeader);
     }
 
     /** GET /api/students */
@@ -95,7 +100,7 @@ public class StudentController {
             @RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        ResponseEntity<ApiResponse<java.util.Map<String, Object>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
+        ResponseEntity<ApiResponse<java.util.Map<String, Object>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER", "SUPER_ADMIN");
         if (denied != null) return denied;
 
         Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
