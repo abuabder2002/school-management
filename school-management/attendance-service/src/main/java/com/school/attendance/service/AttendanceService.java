@@ -412,14 +412,14 @@ public class AttendanceService {
 
     // ---- Leave Reasons (Admin-managed) ----
 
-    /** Return only active reasons for parent dropdown. */
+    /** Return only active reasons for parent dropdown, including Super-Admin global reasons. */
     public List<LeaveReason> getActiveLeaveReasons(Long schoolId) {
-        return leaveReasonRepository.findByActiveTrueAndSchoolIdOrderByEnglishReasonAsc(schoolId);
+        return leaveReasonRepository.findActiveBySchoolIdIncludingGlobal(schoolId);
     }
 
-    /** Return all reasons (active + inactive) for admin management view. */
+    /** Return all reasons (active + inactive) for admin management view, including global reasons. */
     public List<LeaveReason> getAllLeaveReasons(Long schoolId) {
-        return leaveReasonRepository.findBySchoolId(schoolId);
+        return leaveReasonRepository.findBySchoolIdIncludingGlobal(schoolId);
     }
 
     public LeaveReason createLeaveReason(LeaveReason reason, Long schoolId) {
@@ -465,6 +465,41 @@ public class AttendanceService {
      */
     public LeaveReason reactivateLeaveReason(Long id, Long schoolId) {
         LeaveReason existing = leaveReasonRepository.findByIdAndSchoolId(id, schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveReason", "id", id));
+        existing.setActive(true);
+        return leaveReasonRepository.save(existing);
+    }
+
+    // ---- Leave Reasons (Super-Admin-managed, apply to every school) ----
+
+    public List<LeaveReason> getGlobalLeaveReasons() {
+        return leaveReasonRepository.findBySchoolIdIsNull();
+    }
+
+    public LeaveReason createGlobalLeaveReason(LeaveReason reason) {
+        reason.setActive(true);
+        reason.setSchoolId(null);
+        return leaveReasonRepository.save(reason);
+    }
+
+    public LeaveReason updateGlobalLeaveReason(Long id, LeaveReason updated) {
+        LeaveReason existing = leaveReasonRepository.findByIdAndSchoolIdIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveReason", "id", id));
+        existing.setEnglishReason(updated.getEnglishReason());
+        existing.setTamilMeaning(updated.getTamilMeaning());
+        return leaveReasonRepository.save(existing);
+    }
+
+    public void deactivateGlobalLeaveReason(Long id) {
+        LeaveReason existing = leaveReasonRepository.findByIdAndSchoolIdIsNull(id)
+                .orElseThrow(() -> new ResourceNotFoundException("LeaveReason", "id", id));
+        existing.setActive(false);
+        leaveReasonRepository.save(existing);
+        log.info("Global leave reason id={} deactivated (soft-deleted)", id);
+    }
+
+    public LeaveReason reactivateGlobalLeaveReason(Long id) {
+        LeaveReason existing = leaveReasonRepository.findByIdAndSchoolIdIsNull(id)
                 .orElseThrow(() -> new ResourceNotFoundException("LeaveReason", "id", id));
         existing.setActive(true);
         return leaveReasonRepository.save(existing);

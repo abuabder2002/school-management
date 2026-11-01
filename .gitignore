@@ -35,3 +35,6 @@ Thumbs.db
 .agents/
 .claude/
 skills-lock.json
+
+# Pre-deploy DB backup dumps (local scratch, not source)
+.deploy-backups/

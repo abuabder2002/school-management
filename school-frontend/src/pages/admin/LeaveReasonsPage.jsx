@@ -134,6 +134,7 @@ export const LeaveReasonsPage = () => {
               <th>English Reason</th>
               <th>Tamil Meaning / தமிழ் அர்த்தம்</th>
               <th>Displayed As</th>
+              <th>Source</th>
               <th>Status</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
@@ -141,18 +142,20 @@ export const LeaveReasonsPage = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
                   Loading...
                 </td>
               </tr>
             ) : reasons.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
                   No leave reasons defined yet. Click "Add Reason" to get started.
                 </td>
               </tr>
             ) : (
-              reasons.map((r) => (
+              reasons.map((r) => {
+                const isGlobal = r.schoolId == null;
+                return (
                 <tr key={r.id} style={{ opacity: r.active ? 1 : 0.55 }}>
                   <td><strong>#{r.id}</strong></td>
                   <td style={{ fontWeight: 600 }}>{r.englishReason}</td>
@@ -161,41 +164,52 @@ export const LeaveReasonsPage = () => {
                     {r.englishReason} / {r.tamilMeaning}
                   </td>
                   <td>
+                    {isGlobal
+                      ? <span className="badge badge-secondary" title="Added by Super Admin — applies to every school">Global</span>
+                      : <span className="badge badge-secondary">This school</span>
+                    }
+                  </td>
+                  <td>
                     {r.active
                       ? <span className="badge badge-success">Active</span>
                       : <span className="badge badge-secondary">Deactivated</span>
                     }
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-                      <button
-                        className="btn btn-sm btn-secondary"
-                        onClick={() => openEdit(r)}
-                        title="Edit reason"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      {r.active ? (
+                    {isGlobal ? (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Managed by Super Admin</span>
+                    ) : (
+                      <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDeactivate(r)}
-                          title="Deactivate (soft-delete)"
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => openEdit(r)}
+                          title="Edit reason"
                         >
-                          <Trash2 size={14} /> Deactivate
+                          <Edit2 size={14} /> Edit
                         </button>
-                      ) : (
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => handleReactivate(r)}
-                          title="Reactivate reason"
-                        >
-                          <ToggleRight size={14} /> Reactivate
-                        </button>
-                      )}
-                    </div>
+                        {r.active ? (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDeactivate(r)}
+                            title="Deactivate (soft-delete)"
+                          >
+                            <Trash2 size={14} /> Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleReactivate(r)}
+                            title="Reactivate reason"
+                          >
+                            <ToggleRight size={14} /> Reactivate
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

@@ -452,6 +452,71 @@ public class AttendanceController {
         return ResponseEntity.ok(ApiResponse.success("Leave reason reactivated", attendanceService.reactivateLeaveReason(id, resolveSchoolId(authHeader))));
     }
 
+    // ---- Leave Reasons (Super-Admin-managed, apply to every school) ----
+
+    /**
+     * GET /api/attendance/leave-reasons/global — Super Admin's list of reasons that apply to every school.
+     */
+    @GetMapping("/leave-reasons/global")
+    public ResponseEntity<ApiResponse<List<LeaveReason>>> getGlobalLeaveReasons(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<List<LeaveReason>>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        return ResponseEntity.ok(ApiResponse.success(attendanceService.getGlobalLeaveReasons()));
+    }
+
+    /**
+     * POST /api/attendance/leave-reasons/global — Super Admin adds a reason visible to every school.
+     */
+    @PostMapping("/leave-reasons/global")
+    public ResponseEntity<ApiResponse<LeaveReason>> createGlobalLeaveReason(
+            @RequestBody LeaveReason reason,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        LeaveReason created = attendanceService.createGlobalLeaveReason(reason);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Global leave reason created", created));
+    }
+
+    /**
+     * PUT /api/attendance/leave-reasons/global/{id} — Super Admin updates a global reason's text.
+     */
+    @PutMapping("/leave-reasons/global/{id}")
+    public ResponseEntity<ApiResponse<LeaveReason>> updateGlobalLeaveReason(
+            @PathVariable("id") Long id,
+            @RequestBody LeaveReason reason,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        return ResponseEntity.ok(ApiResponse.success("Global leave reason updated", attendanceService.updateGlobalLeaveReason(id, reason)));
+    }
+
+    /**
+     * DELETE /api/attendance/leave-reasons/global/{id} — Super Admin deactivates a global reason for every school.
+     */
+    @DeleteMapping("/leave-reasons/global/{id}")
+    public ResponseEntity<ApiResponse<Void>> deactivateGlobalLeaveReason(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<Void>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        attendanceService.deactivateGlobalLeaveReason(id);
+        return ResponseEntity.ok(ApiResponse.success("Global leave reason deactivated", null));
+    }
+
+    /**
+     * PUT /api/attendance/leave-reasons/global/{id}/reactivate — Super Admin re-enables a global reason.
+     */
+    @PutMapping("/leave-reasons/global/{id}/reactivate")
+    public ResponseEntity<ApiResponse<LeaveReason>> reactivateGlobalLeaveReason(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<LeaveReason>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        return ResponseEntity.ok(ApiResponse.success("Global leave reason reactivated", attendanceService.reactivateGlobalLeaveReason(id)));
+    }
+
     private Long resolveSchoolId(String authHeader) {
         if (authHeader == null) return null;
         String token = jwtDecoder.extractRaw(authHeader);

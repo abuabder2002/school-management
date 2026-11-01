@@ -55,6 +55,7 @@ const ParentDashboard = lazyPage(() => import('./pages/parent/ParentDashboard'),
 const SuperAdminDashboard = lazyPage(() => import('./pages/superadmin/SuperAdminDashboard'), 'SuperAdminDashboard');
 const AddSchoolPage = lazyPage(() => import('./pages/superadmin/AddSchoolPage'), 'AddSchoolPage');
 const SubscriptionPage = lazyPage(() => import('./pages/superadmin/SubscriptionPage'), 'SubscriptionPage');
+const GlobalLeaveReasonsPage = lazyPage(() => import('./pages/superadmin/GlobalLeaveReasonsPage'), 'GlobalLeaveReasonsPage');
 
 // Index Landing Resolver
 const HomeRedirect = () => {
@@ -115,6 +116,7 @@ export const App = () => {
                 <Route index element={<SuperAdminDashboard />} />
                 <Route path="schools" element={<AddSchoolPage />} />
                 <Route path="subscription" element={<SubscriptionPage />} />
+                <Route path="leave-reasons" element={<GlobalLeaveReasonsPage />} />
               </Route>
 
               {/* Admin Protected Routes */}

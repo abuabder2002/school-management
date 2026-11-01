@@ -89,4 +89,36 @@ export const leaveService = {
     const response = await api.put(`/api/attendance/leave-reasons/${id}/reactivate`);
     return response.data;
   },
+
+  // ---- Leave Reasons (Super Admin, apply to every school) ----
+
+  // Super Admin: all global reasons (active + inactive)
+  getGlobalReasons: async () => {
+    const response = await api.get('/api/attendance/leave-reasons/global');
+    return response.data;
+  },
+
+  // Super Admin: create a reason visible to every school
+  createGlobalReason: async (data) => {
+    const response = await api.post('/api/attendance/leave-reasons/global', data);
+    return response.data;
+  },
+
+  // Super Admin: update a global reason's text
+  updateGlobalReason: async (id, data) => {
+    const response = await api.put(`/api/attendance/leave-reasons/global/${id}`, data);
+    return response.data;
+  },
+
+  // Super Admin: deactivate a global reason for every school
+  deleteGlobalReason: async (id) => {
+    const response = await api.delete(`/api/attendance/leave-reasons/global/${id}`);
+    return response.data;
+  },
+
+  // Super Admin: re-enable a deactivated global reason
+  reactivateGlobalReason: async (id) => {
+    const response = await api.put(`/api/attendance/leave-reasons/global/${id}/reactivate`);
+    return response.data;
+  },
 };

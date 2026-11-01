@@ -144,6 +144,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <CalendarClock size={18} />
               <span>Subscription</span>
             </NavLink>
+            <NavLink
+              to="/super-admin/leave-reasons"
+              onClick={handleLinkClick}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <BookMarked size={18} />
+              <span>Leave Reasons</span>
+            </NavLink>
           </>
         )}
 
