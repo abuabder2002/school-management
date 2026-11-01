@@ -334,6 +334,34 @@ export const BoardResultsPage = () => {
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
                   Add Student
                 </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Board *</label>
+                    <select className="form-select" value={form.board} onChange={(e) => setForm({ ...form, board: e.target.value })}>
+                      {BOARD_OPTIONS.map((b) => (
+                        <option key={b.value} value={b.value}>{b.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Class *</label>
+                    <select className="form-select" value={form.standard} onChange={(e) => setForm({ ...form, standard: e.target.value })}>
+                      <option value="X">X</option>
+                      <option value="XII">XII</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Academic Year *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. 2026-2027"
+                      value={form.academicYear}
+                      onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Student *</label>
                   {!form.studentId ? (
@@ -393,35 +421,6 @@ export const BoardResultsPage = () => {
                       )}
                     </div>
                   )}
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Board *</label>
-                    <select className="form-select" value={form.board} onChange={(e) => setForm({ ...form, board: e.target.value })}>
-                      {BOARD_OPTIONS.map((b) => (
-                        <option key={b.value} value={b.value}>{b.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Class *</label>
-                    <select className="form-select" value={form.standard} onChange={(e) => setForm({ ...form, standard: e.target.value })}>
-                      <option value="X">X</option>
-                      <option value="XII">XII</option>
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Academic Year *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. 2026-2027"
-                      value={form.academicYear}
-                      onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
-                      required
-                    />
-                  </div>
                 </div>
 
                 <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', margin: '1.5rem 0 0.6rem' }}>
