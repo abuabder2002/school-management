@@ -13,6 +13,8 @@ import {
   Shield,
   Baby,
   KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export const ParentsPage = () => {
@@ -32,6 +34,7 @@ export const ParentsPage = () => {
   });
 
   const { addToast } = useToast();
+  const [showPassword, setShowPassword] = useState(false);
 
   // Reset password
   const [resetModalUser, setResetModalUser] = useState(null);
@@ -91,6 +94,7 @@ export const ParentsPage = () => {
       role: 'PARENT',
       studentId: '',
     });
+    setShowPassword(false);
     setIsModalOpen(true);
   };
 
@@ -275,14 +279,37 @@ export const ParentsPage = () => {
 
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-input"
-              required
-              placeholder="Set initial password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="form-input"
+                required
+                placeholder="Set initial password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           
           <div className="form-group">

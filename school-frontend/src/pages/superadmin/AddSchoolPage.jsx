@@ -3,7 +3,7 @@ import { schoolService } from '../../services/schoolService';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/common/Modal';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { Building2, Plus, Settings, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Building2, Plus, Settings, ToggleLeft, ToggleRight, Trash2, Eye, EyeOff } from 'lucide-react';
 
 const EMPTY_FORM = { name: '', adminName: '', adminEmail: '', adminPassword: '' };
 
@@ -20,6 +20,7 @@ export const AddSchoolPage = () => {
   const [modulesLoading, setModulesLoading] = useState(false);
   const [savingKey, setSavingKey] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { addToast } = useToast();
 
@@ -41,6 +42,7 @@ export const AddSchoolPage = () => {
 
   const handleOpenAdd = () => {
     setForm(EMPTY_FORM);
+    setShowPassword(false);
     setAddModalOpen(true);
   };
 
@@ -211,7 +213,36 @@ export const AddSchoolPage = () => {
           </div>
           <div className="form-group">
             <label>Password</label>
-            <input className="form-input" type="password" value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} placeholder="Minimum 4 characters" />
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showPassword ? 'text' : 'password'}
+                value={form.adminPassword}
+                onChange={(e) => setForm({ ...form, adminPassword: e.target.value })}
+                placeholder="Minimum 4 characters"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '0.8rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
