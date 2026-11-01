@@ -37,4 +37,8 @@ public class AuditLogEntry {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    /** The acting admin's school at the time of the action. Null for SUPER_ADMIN-driven actions. */
+    @Column(name = "school_id")
+    private Long schoolId;
 }

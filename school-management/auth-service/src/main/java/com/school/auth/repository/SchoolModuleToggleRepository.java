@@ -13,4 +13,6 @@ public interface SchoolModuleToggleRepository extends JpaRepository<SchoolModule
     List<SchoolModuleToggle> findBySchoolId(Long schoolId);
 
     Optional<SchoolModuleToggle> findBySchoolIdAndModuleKey(Long schoolId, String moduleKey);
+
+    void deleteBySchoolId(Long schoolId);
 }

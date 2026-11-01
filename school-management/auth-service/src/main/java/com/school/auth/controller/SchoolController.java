@@ -54,6 +54,12 @@ public class SchoolController {
         return ResponseEntity.ok(ApiResponse.success(moduleToggleService.getTogglesForSchool(schoolId)));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteSchool(@PathVariable("id") Long id) {
+        schoolService.deleteSchool(id);
+        return ResponseEntity.ok(ApiResponse.success("School deleted", null));
+    }
+
     @PutMapping("/{id}/subscription")
     public ResponseEntity<ApiResponse<SchoolDTO>> updateSubscription(
             @PathVariable("id") Long id,

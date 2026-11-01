@@ -30,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findFirstBySchoolIdAndRole(Long schoolId, Role role);
 
+    List<User> findByRoleAndSchoolId(Role role, Long schoolId);
+
+    Optional<User> findByIdAndSchoolId(Long id, Long schoolId);
+
+    void deleteBySchoolId(Long schoolId);
+
 }

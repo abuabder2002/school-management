@@ -30,6 +30,7 @@ public class SchoolService {
 
     private final SchoolRepository schoolRepository;
     private final UserRepository userRepository;
+    private final com.school.auth.repository.SchoolModuleToggleRepository moduleToggleRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -93,6 +94,23 @@ public class SchoolService {
                 .map(User::getEmail)
                 .orElse(null);
         return toDTO(saved, adminEmail);
+    }
+
+    /**
+     * Deletes a school and its login accounts (the admin, and any staff/parent/student accounts
+     * created under it) plus its module toggles. Does not touch that school's operational data
+     * in the other services (students, marks, attendance, fees, notifications) — those rows stay
+     * scoped to a schoolId that no longer resolves to a School, which keeps them isolated from
+     * every other school exactly as before, just orphaned rather than actively served.
+     */
+    @Transactional
+    public void deleteSchool(Long schoolId) {
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("School", "id", schoolId));
+        userRepository.deleteBySchoolId(schoolId);
+        moduleToggleRepository.deleteBySchoolId(schoolId);
+        schoolRepository.delete(school);
+        log.info("Deleted school '{}' (id={}) and its user accounts", school.getName(), schoolId);
     }
 
     /** The caller's own school, read-only (ADMIN role) — resolved from their own User row, never a path/body parameter. */

@@ -49,6 +49,41 @@ public class UserService {
     }
 
     /**
+     * The acting ADMIN's own school, for endpoints that must only see/act on their own school's
+     * accounts (staff list, parent list, password reset, staff delete, audit log). Throws if the
+     * caller isn't resolvable to a school (e.g. a SUPER_ADMIN, who has no school of their own and
+     * must use the dedicated Super Admin endpoints instead).
+     */
+    private Long resolveCallerSchoolId() {
+        String actorEmail = currentActorEmail();
+        Long schoolId = userRepository.findByEmail(actorEmail).map(User::getSchoolId).orElse(null);
+        if (schoolId == null) {
+            throw new BadRequestException("Could not resolve your school; please log in again.");
+        }
+        return schoolId;
+    }
+
+    /**
+     * Blocks login once a school's subscription has lapsed: deactivated outright, or past its
+     * end date. Null schoolId (SUPER_ADMIN, or a user somehow unresolvable to a school) is let
+     * through — there's no subscription to check. A missing School row is also let through
+     * rather than locking everyone out over stale/inconsistent data.
+     */
+    private void assertSchoolSubscriptionActive(Long schoolId) {
+        if (schoolId == null) {
+            return;
+        }
+        schoolRepository.findById(schoolId).ifPresent(school -> {
+            if (!school.isActive()) {
+                throw new BadRequestException("Your school's account is inactive. Please contact the administrator.");
+            }
+            if (school.getSubscriptionEnd() != null && school.getSubscriptionEnd().isBefore(java.time.LocalDate.now())) {
+                throw new BadRequestException("Your school's subscription has expired. Please contact the administrator.");
+            }
+        });
+    }
+
+    /**
      * The school a newly-created user should belong to: the acting admin's own school, or
      * (for public self-registration, where there's no acting admin) the sole existing school,
      * if there is exactly one. Returns null otherwise — e.g. a SUPER_ADMIN actor, who has no
@@ -67,6 +102,7 @@ public class UserService {
     }
 
     private void logAudit(String action, String targetEmail, String targetRole, String details) {
+        Long actorSchoolId = userRepository.findByEmail(currentActorEmail()).map(User::getSchoolId).orElse(null);
         auditLogRepository.save(AuditLogEntry.builder()
                 .actorEmail(currentActorEmail())
                 .action(action)
@@ -74,6 +110,7 @@ public class UserService {
                 .targetRole(targetRole)
                 .details(details)
                 .createdAt(LocalDateTime.now())
+                .schoolId(actorSchoolId)
                 .build());
     }
 
@@ -196,6 +233,7 @@ public class UserService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BadRequestException("Invalid email or password");
         }
+        assertSchoolSubscriptionActive(user.getSchoolId());
 
         log.info("User logged in: {}", user.getEmail());
         String token = jwtUtil.generateToken(
@@ -273,6 +311,7 @@ public class UserService {
             user = userRepository.save(user);
         }
 
+        assertSchoolSubscriptionActive(user.getSchoolId());
 
         log.info("Parent logged in successfully: phone={}, studentId={}", phone, student.getStudentId());
         String token = jwtUtil.generateToken(
@@ -294,7 +333,7 @@ public class UserService {
      */
     public List<UserSummaryDTO> getUsersByRole(String roleName) {
         Role role = Role.valueOf(roleName);
-        return userRepository.findByRole(role).stream()
+        return userRepository.findByRoleAndSchoolId(role, resolveCallerSchoolId()).stream()
                 .map(u -> UserSummaryDTO.builder()
                         .id(u.getId())
                         .name(u.getName())
@@ -304,11 +343,12 @@ public class UserService {
                 .toList();
     }
 
-    /** Every Admin and Teacher account, for the admin-facing Staff Accounts page. */
+    /** Every Admin and Teacher account in the caller's own school, for the admin-facing Staff Accounts page. */
     public List<UserSummaryDTO> getStaffUsers() {
+        Long schoolId = resolveCallerSchoolId();
         return java.util.stream.Stream.concat(
-                        userRepository.findByRole(Role.ADMIN).stream(),
-                        userRepository.findByRole(Role.TEACHER).stream())
+                        userRepository.findByRoleAndSchoolId(Role.ADMIN, schoolId).stream(),
+                        userRepository.findByRoleAndSchoolId(Role.TEACHER, schoolId).stream())
                 .map(u -> UserSummaryDTO.builder()
                         .id(u.getId())
                         .name(u.getName())
@@ -330,7 +370,7 @@ public class UserService {
         if (newPassword == null || newPassword.trim().length() < 4) {
             throw new BadRequestException("Password must be at least 4 characters.");
         }
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndSchoolId(userId, resolveCallerSchoolId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         user.setPassword(passwordEncoder.encode(newPassword.trim()));
         userRepository.save(user);
@@ -344,7 +384,8 @@ public class UserService {
      */
     public void deleteStaff(Long userId) {
         String actorEmail = currentActorEmail();
-        User target = userRepository.findById(userId)
+        Long schoolId = resolveCallerSchoolId();
+        User target = userRepository.findByIdAndSchoolId(userId, schoolId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
         if (target.getRole() != Role.ADMIN && target.getRole() != Role.TEACHER) {
@@ -353,7 +394,7 @@ public class UserService {
         if (target.getEmail().equalsIgnoreCase(actorEmail)) {
             throw new BadRequestException("You cannot delete your own account.");
         }
-        if (target.getRole() == Role.ADMIN && userRepository.findByRole(Role.ADMIN).size() <= 1) {
+        if (target.getRole() == Role.ADMIN && userRepository.findByRoleAndSchoolId(Role.ADMIN, schoolId).size() <= 1) {
             throw new BadRequestException("Cannot delete the last remaining administrator account.");
         }
 
@@ -362,9 +403,9 @@ public class UserService {
         logAudit("DELETE_STAFF", target.getEmail(), target.getRole().name(), null);
     }
 
-    /** Most recent account-management actions (staff created/deleted, password resets). ADMIN only. */
+    /** Most recent account-management actions in the caller's own school (staff created/deleted, password resets). ADMIN only. */
     public List<AuditLogDTO> getRecentAuditLog() {
-        return auditLogRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 100)).stream()
+        return auditLogRepository.findBySchoolIdOrderByCreatedAtDesc(resolveCallerSchoolId(), PageRequest.of(0, 100)).stream()
                 .map(e -> AuditLogDTO.builder()
                         .id(e.getId())
                         .actorEmail(e.getActorEmail())
