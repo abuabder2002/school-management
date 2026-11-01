@@ -3,7 +3,7 @@ import { schoolService } from '../../services/schoolService';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/common/Modal';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { Building2, Plus, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Building2, Plus, Settings, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 
 const EMPTY_FORM = { name: '', adminName: '', adminEmail: '', adminPassword: '' };
 
@@ -19,6 +19,7 @@ export const AddSchoolPage = () => {
   const [modules, setModules] = useState([]);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [savingKey, setSavingKey] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const { addToast } = useToast();
 
@@ -68,6 +69,27 @@ export const AddSchoolPage = () => {
       addToast(err.response?.data?.message || 'Failed to create school', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteSchool = async (school) => {
+    const typed = window.prompt(
+      `This permanently deletes "${school.name}" and its admin/staff login accounts — this cannot be undone.\n\nType the school name to confirm:`
+    );
+    if (typed === null) return;
+    if (typed.trim() !== school.name) {
+      addToast('School name did not match — deletion cancelled.', 'warning');
+      return;
+    }
+    setDeletingId(school.id);
+    try {
+      await schoolService.deleteSchool(school.id);
+      addToast(`School "${school.name}" deleted.`, 'success');
+      load();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to delete school', 'error');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -139,9 +161,19 @@ export const AddSchoolPage = () => {
                       : <span className="badge badge-secondary">Inactive</span>}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button className="btn btn-sm btn-secondary" onClick={() => handleOpenModules(s)}>
-                      <Settings size={14} /> Modules
-                    </button>
+                    <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => handleOpenModules(s)}>
+                        <Settings size={14} /> Modules
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteSchool(s)}
+                        disabled={deletingId === s.id}
+                        title="Delete school"
+                      >
+                        <Trash2 size={14} /> {deletingId === s.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

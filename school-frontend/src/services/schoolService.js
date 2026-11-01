@@ -24,6 +24,11 @@ export const schoolService = {
     return response.data;
   },
 
+  deleteSchool: async (schoolId) => {
+    const response = await api.delete(`/api/auth/schools/${schoolId}`);
+    return response.data;
+  },
+
   updateSubscription: async (schoolId, subscriptionData) => {
     // subscriptionData: { subscriptionStart, subscriptionEnd, planType, active }
     const response = await api.put(`/api/auth/schools/${schoolId}/subscription`, subscriptionData);
