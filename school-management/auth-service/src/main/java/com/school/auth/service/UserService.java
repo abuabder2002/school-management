@@ -65,22 +65,22 @@ public class UserService {
 
     /**
      * Blocks login once a school's subscription has lapsed: deactivated outright, or past its
-     * end date. Null schoolId (SUPER_ADMIN, or a user somehow unresolvable to a school) is let
-     * through — there's no subscription to check. A missing School row is also let through
-     * rather than locking everyone out over stale/inconsistent data.
+     * end date, or deleted. Null schoolId (SUPER_ADMIN) is let through — there's no school to check.
+     * A schoolId whose School row no longer exists means the school was deleted by the Super Admin;
+     * its leftover parent accounts must not keep signing in to a school that no longer exists.
      */
     private void assertSchoolSubscriptionActive(Long schoolId) {
         if (schoolId == null) {
             return;
         }
-        schoolRepository.findById(schoolId).ifPresent(school -> {
-            if (!school.isActive()) {
-                throw new BadRequestException("Your school's account is inactive. Please contact the administrator.");
-            }
-            if (school.getSubscriptionEnd() != null && school.getSubscriptionEnd().isBefore(java.time.LocalDate.now())) {
-                throw new BadRequestException("Your school's subscription has expired. Please contact the administrator.");
-            }
-        });
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new BadRequestException("This school no longer exists. Please contact the administrator."));
+        if (!school.isActive()) {
+            throw new BadRequestException("Your school's account is inactive. Please contact the administrator.");
+        }
+        if (school.getSubscriptionEnd() != null && school.getSubscriptionEnd().isBefore(java.time.LocalDate.now())) {
+            throw new BadRequestException("Your school's subscription has expired. Please contact the administrator.");
+        }
     }
 
     /**

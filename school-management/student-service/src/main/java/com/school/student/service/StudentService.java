@@ -299,8 +299,14 @@ public class StudentService {
 
         String cleanPhone = phoneNumber.trim();
         String digitsOnly = cleanPhone.replaceAll("[^0-9]", "");
-        String stripped = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
-        String zeroPrefixed = "0" + stripped;
+        // Only a genuine phone number gets the "last 10 digits" / leading-zero matching. A login ID
+        // that isn't a phone number (an email, a name) must match exactly: stripping it to digits
+        // gives "" or "0", which equals every student's blank mobile field and let any email plus
+        // one student's parent password sign in to that student's portal.
+        boolean phoneLike = digitsOnly.length() >= 6 && cleanPhone.matches("^[+()\\d\\s.-]+$");
+        String stripped = !phoneLike ? cleanPhone
+                : (digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly);
+        String zeroPrefixed = phoneLike ? "0" + stripped : cleanPhone;
 
         List<Student> students = studentRepository.findByAnyPhoneNumber(cleanPhone, stripped, zeroPrefixed);
         if (students.isEmpty()) {
