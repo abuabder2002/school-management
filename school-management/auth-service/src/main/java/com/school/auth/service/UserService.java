@@ -267,8 +267,21 @@ public class UserService {
             throw new BadRequestException("Unable to resolve student for these credentials");
         }
 
+        // A parent's login ID is free text on the student record, so it can collide with a staff
+        // member's email. Never adopt that staff row as the "parent user": the sync below rewrites
+        // its name, password, student link and school, which hijacks the staff account (admin ends
+        // up inside a parent's portal and locked out of their own password).
+        java.util.Optional<User> userWithThisLoginId = userRepository.findByEmail(phone);
+        if (userWithThisLoginId.isPresent() && userWithThisLoginId.get().getRole() != Role.PARENT) {
+            log.warn("Parent login refused: login ID {} belongs to a {} account (student {})",
+                    phone, userWithThisLoginId.get().getRole(), student.getStudentId());
+            throw new BadRequestException(
+                    "This parent login ID is the same as a staff account's email. "
+                            + "Please ask the school to give this student a different parent login ID.");
+        }
+
         // Find or create parent user in auth-service users table so userId is consistent
-        User user = userRepository.findByEmail(phone)
+        User user = userWithThisLoginId
                 .or(() -> userRepository.findFirstByRoleAndStudentId(Role.PARENT, student.getStudentId()))
                 .orElseGet(() -> {
                     User newUser = User.builder()
