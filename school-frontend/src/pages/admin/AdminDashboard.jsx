@@ -171,7 +171,13 @@ export const AdminDashboard = () => {
         pendingLeaves: leavesList.length + teacherLeavesList.length,
       });
 
-      setUpcomingExams(examsList.slice(0, 4));
+      // Only exams that haven't happened yet, soonest first (not just the first four rows).
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const upcoming = examsList
+        .filter((e) => e.examDate && String(e.examDate).slice(0, 10) >= todayStr)
+        .sort((a, b) => String(a.examDate).localeCompare(String(b.examDate)));
+      setUpcomingExams(upcoming.slice(0, 4));
       setFeeSummary({ totalBilled: billed, totalPaid: paid, totalOutstanding: outstanding });
       setUpcomingBirthdays(birthdayPeople.slice(0, 8));
     } catch (err) {

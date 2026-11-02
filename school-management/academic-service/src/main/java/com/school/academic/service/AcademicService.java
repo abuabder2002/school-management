@@ -40,6 +40,7 @@ public class AcademicService {
     private final MarkRepository markRepository;
     private final HomeworkRepository homeworkRepository;
     private final BoardResultRepository boardResultRepository;
+    private final AcademicDefaultsSeeder defaultsSeeder;
 
     // ---- AcademicClass ----
 
@@ -539,46 +540,11 @@ public class AcademicService {
     }
 
     /**
-     * A school with zero exams/subjects/classes of its own (every school created after this
-     * isolation work shipped) would otherwise show empty dropdowns throughout Marks/Homework —
-     * before this fix, a new school silently inherited Default School's shared seed data; now
-     * that's correctly blocked, but nothing replaced it. Seeds the same standard set
-     * {@link com.school.academic.config.AcademicDataInitializer} seeds for Default School,
-     * scoped to this schoolId, the first time any of the three lists is read empty.
+     * A brand-new school would otherwise show empty exam/subject/class dropdowns throughout Marks,
+     * so it is given the standard set — once. See {@link AcademicDefaultsSeeder}.
      */
     private void ensureStandardAcademicDataSeeded(Long schoolId) {
-        if (schoolId == null) return;
-        if (examRepository.findBySchoolId(schoolId).isEmpty()) {
-            for (String examName : com.school.academic.config.AcademicDataInitializer.STANDARD_EXAMS) {
-                examRepository.save(Exam.builder()
-                        .name(examName)
-                        .totalMarks(100)
-                        .examDate(java.time.LocalDate.now().plusMonths(1))
-                        .schoolId(schoolId)
-                        .build());
-            }
-            log.info("Seeded standard exams for schoolId {}", schoolId);
-        }
-        if (subjectRepository.findBySchoolId(schoolId).isEmpty()) {
-            for (String[] sub : com.school.academic.config.AcademicDataInitializer.STANDARD_SUBJECTS) {
-                subjectRepository.save(Subject.builder()
-                        .name(sub[0])
-                        .code(sub[1])
-                        .schoolId(schoolId)
-                        .build());
-            }
-            log.info("Seeded standard subjects for schoolId {}", schoolId);
-        }
-        if (classRepository.findBySchoolId(schoolId).isEmpty()) {
-            for (int i = 1; i <= 12; i++) {
-                classRepository.save(AcademicClass.builder()
-                        .name("Class " + i)
-                        .section("A")
-                        .schoolId(schoolId)
-                        .build());
-            }
-            log.info("Seeded standard classes for schoolId {}", schoolId);
-        }
+        defaultsSeeder.ensureSeeded(schoolId);
     }
 
     private List<BoardResult.SubjectMark> toSubjectEntities(List<SubjectMarkDTO> subjects) {
