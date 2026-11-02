@@ -622,15 +622,8 @@ public class ExcelImportService {
                             .errorType("Missing Required Field")
                             .errorMessage("Row " + excelRow + ": Class is required.")
                             .build());
-                } else if (!AcademicClassOrder.isValidClass(normClass)) {
-                    errors.add(BulkUploadError.builder()
-                            .row(excelRow)
-                            .studentName(rawName)
-                            .admissionNumber(rawAdmNo)
-                            .errorType("Invalid Class")
-                            .errorMessage("Row " + excelRow + ": Invalid class: " + rawClass)
-                            .build());
                 }
+                // Any non-blank class is accepted — schools define their own class names.
 
                 // Check class-specific template scope if expectedClassName is specified
                 if (expectedClassName != null && !expectedClassName.isBlank() && !"ALL".equalsIgnoreCase(expectedClassName.trim()) && !"ALL CLASSES".equalsIgnoreCase(expectedClassName.trim())) {

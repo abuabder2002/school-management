@@ -152,9 +152,8 @@ public class StudentService {
         if (dto.getClassName() == null || dto.getClassName().isBlank()) {
             throw new BadRequestException("Class name is required");
         }
-        if (!AcademicClassOrder.isValidClass(dto.getClassName())) {
-            throw new BadRequestException("Invalid class name: " + dto.getClassName());
-        }
+        // Any non-blank class name is allowed: schools (e.g. tuition centres) define their own,
+        // like "State Board Boys". Standard names are still normalised ("X" -> "Class 10").
         dto.setClassName(AcademicClassOrder.toApplicationClassName(dto.getClassName()));
 
         if ((dto.getFatherName() == null || dto.getFatherName().isBlank()) &&
@@ -194,7 +193,9 @@ public class StudentService {
             int currentRank = AcademicClassOrder.getClassRank(currentClass);
             int requestedRank = AcademicClassOrder.getClassRank(requestedClass);
 
-            if (requestedRank < currentRank) {
+            // The no-demotion rule only means something between standard classes; a school's own
+            // custom class names (rank 999) have no defined order, so they can be moved freely.
+            if (requestedRank < 999 && currentRank < 999 && requestedRank < currentRank) {
                 throw new BadRequestException("Student cannot be demoted to a lower class.");
             }
 

@@ -6,20 +6,25 @@ import java.util.regex.Pattern;
 
 public class AcademicClassOrder {
 
-    private static final Pattern CLASS_NUM_PATTERN = Pattern.compile("(?i)(?:CLASS|GRADE|STD)?\\s*(\\d+)");
+    // Whole-string match only: a school's own class names (e.g. "State Board Boys", "NEET Batch 2",
+    // "10th Boys") must never be mistaken for a standard class just because they contain a number
+    // or end in a roman-numeral-looking word.
+    private static final Pattern CLASS_NUM_PATTERN =
+            Pattern.compile("^(?:(?:CLASS|GRADE|STD|STANDARD)\\s*)?(\\d+)(?:ST|ND|RD|TH)?$");
 
+    private static final Pattern STANDARD_PREFIX = Pattern.compile("^(?:CLASS|GRADE|STD|STANDARD)(?=\\s|\\d)\\s*");
+
+    /** Rank of a standard class (pre-KG 1 ... Class 12 22); 999 for any school-defined custom class name. */
     public static int getClassRank(String className) {
         if (className == null || className.trim().isBlank()) return 999;
-        String normalized = className.trim().toUpperCase()
-                .replaceAll("\\s+", " ")
-                .replaceAll("GRADE\\s*", "CLASS ")
-                .replaceAll("STD\\s*", "CLASS ");
+        String upper = className.trim().toUpperCase().replaceAll("\\s+", " ");
 
-        if (normalized.contains("PRE-KG") || normalized.contains("PREKG") || normalized.contains("PLAY")) return 1;
-        if (normalized.equals("LKG") || normalized.startsWith("LKG") || normalized.contains("L.K.G")) return 2;
-        if (normalized.equals("UKG") || normalized.startsWith("UKG") || normalized.contains("U.K.G")) return 3;
+        if (upper.equals("PRE-KG") || upper.equals("PREKG") || upper.equals("PLAY") || upper.equals("PLAY SCHOOL")
+                || upper.equals("PLAYGROUP") || upper.equals("PLAY GROUP")) return 1;
+        if (upper.equals("LKG") || upper.equals("L.K.G") || upper.equals("L.K.G.") || upper.equals("NURSERY")) return 2;
+        if (upper.equals("UKG") || upper.equals("U.K.G") || upper.equals("U.K.G.")) return 3;
 
-        Matcher matcher = CLASS_NUM_PATTERN.matcher(normalized);
+        Matcher matcher = CLASS_NUM_PATTERN.matcher(upper);
         if (matcher.find()) {
             try {
                 int num = Integer.parseInt(matcher.group(1));
@@ -27,24 +32,26 @@ public class AcademicClassOrder {
             } catch (NumberFormatException ignored) {}
         }
 
-        // Roman numerals
-        if (normalized.endsWith(" XII") || normalized.equals("XII")) return 22;
-        if (normalized.endsWith(" XI") || normalized.equals("XI")) return 21;
-        if (normalized.endsWith(" X") || normalized.equals("X")) return 20;
-        if (normalized.endsWith(" IX") || normalized.equals("IX")) return 19;
-        if (normalized.endsWith(" VIII") || normalized.equals("VIII")) return 18;
-        if (normalized.endsWith(" VII") || normalized.equals("VII")) return 17;
-        if (normalized.endsWith(" VI") || normalized.equals("VI")) return 16;
-        if (normalized.endsWith(" V") || normalized.equals("V")) return 15;
-        if (normalized.endsWith(" IV") || normalized.equals("IV")) return 14;
-        if (normalized.endsWith(" III") || normalized.equals("III")) return 13;
-        if (normalized.endsWith(" II") || normalized.equals("II")) return 12;
-        if (normalized.endsWith(" I") || normalized.equals("I")) return 11;
-
-        return 999;
+        String core = STANDARD_PREFIX.matcher(upper).replaceFirst("");
+        switch (core) {
+            case "XII": return 22;
+            case "XI": return 21;
+            case "X": return 20;
+            case "IX": return 19;
+            case "VIII": return 18;
+            case "VII": return 17;
+            case "VI": return 16;
+            case "V": return 15;
+            case "IV": return 14;
+            case "III": return 13;
+            case "II": return 12;
+            case "I": return 11;
+            default: return 999;
+        }
     }
 
-    public static boolean isValidClass(String className) {
+    /** True for the recognised standard classes; false for a school-defined custom class name. */
+    public static boolean isStandardClass(String className) {
         return getClassRank(className) < 999;
     }
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { scheduleService } from '../../services/scheduleService';
 import { authService } from '../../services/authService';
-import { academicService } from '../../services/academicService';
 import { studentService } from '../../services/studentService';
 import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
-import { Edit2, Trash2 } from 'lucide-react';
-import { toDisplayClassName, compareAcademicClasses, isClassMatch } from '../../utils/academicClassOrder';
+import { Edit2, Trash2, Plus, X } from 'lucide-react';
+import { toDisplayClassName, toApplicationClassName, compareAcademicClasses, isClassMatch } from '../../utils/academicClassOrder';
+
+const ADD_MANUALLY = '__add_manually__';
 
 const emptyForm = () => ({
   scheduleDate: new Date().toISOString().slice(0, 10),
@@ -21,44 +22,61 @@ export const DailySchedulePage = () => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [staffOptions, setStaffOptions] = useState([]);
-  const [academicClasses, setAcademicClasses] = useState([]);
-  const [classesLoaded, setClassesLoaded] = useState(false);
   const [students, setStudents] = useState([]);
+  const [scheduledClasses, setScheduledClasses] = useState([]);
+  const [scheduledSections, setScheduledSections] = useState([]);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+  // Classes/sections typed in by hand this visit (they persist once an entry is saved under them).
+  const [manualClasses, setManualClasses] = useState([]);
+  const [manualSections, setManualSections] = useState({});
+  const [addingClass, setAddingClass] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  const [addingSection, setAddingSection] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
   const [form, setForm] = useState(emptyForm());
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const { addToast } = useToast();
 
-  // Only the classes/sections this school has actually added — never a fixed LKG-XII list,
-  // since one school may stop at Class 5 and another may go all the way to Class 12.
+  // Classes come from what this school actually uploaded (its students' classes, e.g. "State Board
+  // Boys"), plus classes already scheduled and any typed in by hand — never a fixed LKG-XII list.
   const classOptions = useMemo(() => {
-    const names = [...new Set(academicClasses.map((c) => c.name).filter(Boolean))];
-    return names.sort(compareAcademicClasses);
-  }, [academicClasses]);
+    const byKey = new Map();
+    const add = (raw) => {
+      const name = toApplicationClassName(raw);
+      if (name && !byKey.has(name.toLowerCase())) byKey.set(name.toLowerCase(), name);
+    };
+    students.forEach((s) => add(s.className));
+    scheduledClasses.forEach(add);
+    manualClasses.forEach(add);
+    add(form.className);
+    return [...byKey.values()].sort(compareAcademicClasses);
+  }, [students, scheduledClasses, manualClasses, form.className]);
 
-  // Sections come from the actual student roster (a class's section split is defined by its
-  // enrolled students, not the single-section-per-class AcademicClass master list).
+  // Sections: from the class's enrolled students, sections already scheduled for it, and any typed in.
   const sectionOptions = useMemo(() => {
-    const sections = students
+    const sections = new Set();
+    students
       .filter((s) => isClassMatch(s.className, form.className))
-      .map((s) => s.section)
-      .filter(Boolean);
-    return [...new Set(sections)].sort();
-  }, [students, form.className]);
+      .forEach((s) => s.section && sections.add(s.section));
+    scheduledSections.forEach((s) => sections.add(s));
+    (manualSections[form.className] || []).forEach((s) => sections.add(s));
+    if (form.section) sections.add(form.section);
+    return [...sections].sort();
+  }, [students, scheduledSections, manualSections, form.className, form.section]);
 
   useEffect(() => {
     loadStaff();
-    loadAcademicClasses();
-    loadStudents();
+    loadClassSources();
   }, []);
 
-  // Default to the school's first configured class once loaded, instead of a hardcoded one.
+  // Default to the school's first class once its data has loaded, instead of a hardcoded one.
   useEffect(() => {
-    if (classesLoaded && !form.className && classOptions.length > 0) {
+    if (optionsLoaded && !form.className && classOptions.length > 0) {
       setForm((f) => ({ ...f, className: classOptions[0] }));
     }
-  }, [classesLoaded, classOptions, form.className]);
+  }, [optionsLoaded, classOptions, form.className]);
 
   useEffect(() => {
     if (!form.className) return;
@@ -77,37 +95,62 @@ export const DailySchedulePage = () => {
     }
   };
 
-  const loadAcademicClasses = async () => {
-    try {
-      const res = await academicService.getAllClasses();
-      setAcademicClasses(res.success && res.data ? res.data : []);
-    } catch {
+  const loadClassSources = async () => {
+    const [studentsRes, scheduledRes] = await Promise.allSettled([
+      studentService.getAllStudents({ page: 1, pageSize: 10000, status: 'Active' }),
+      scheduleService.getScheduledClasses(),
+    ]);
+    if (studentsRes.status === 'fulfilled') {
+      const res = studentsRes.value;
+      setStudents(res?.data?.data || (Array.isArray(res?.data) ? res.data : []));
+    } else {
       addToast('Failed to load this school\'s classes', 'error');
-    } finally {
-      setClassesLoaded(true);
     }
-  };
-
-  const loadStudents = async () => {
-    try {
-      const res = await studentService.getAllStudents({ page: 1, pageSize: 10000, status: 'Active' });
-      const list = res?.data?.data || (Array.isArray(res?.data) ? res.data : []);
-      setStudents(list);
-    } catch {
-      // non-fatal — Section dropdown just stays empty until classes/students are picked
+    if (scheduledRes.status === 'fulfilled' && scheduledRes.value?.success) {
+      setScheduledClasses(scheduledRes.value.data || []);
     }
+    setOptionsLoaded(true);
   };
 
   const load = async () => {
     try {
       setLoading(true);
       const res = await scheduleService.getForClass(form.className, form.section);
-      setEntries(res.success && res.data ? res.data : []);
+      const list = res.success && res.data ? res.data : [];
+      setEntries(list);
+      // Viewing a whole class (no section filter) tells us which sections it has been scheduled under.
+      if (!form.section) {
+        setScheduledSections([...new Set(list.map((e) => e.section).filter(Boolean))]);
+      }
     } catch {
       addToast('Failed to load class schedule', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  const commitNewClass = () => {
+    const name = toApplicationClassName(newClassName.trim());
+    if (!name) {
+      addToast('Type a class name first.', 'warning');
+      return;
+    }
+    setManualClasses((prev) => [...prev, name]);
+    setForm((f) => ({ ...f, className: name, section: '' }));
+    setNewClassName('');
+    setAddingClass(false);
+  };
+
+  const commitNewSection = () => {
+    const name = newSectionName.trim();
+    if (!name) {
+      addToast('Type a section name first.', 'warning');
+      return;
+    }
+    setManualSections((prev) => ({ ...prev, [form.className]: [...(prev[form.className] || []), name] }));
+    setForm((f) => ({ ...f, section: name }));
+    setNewSectionName('');
+    setAddingSection(false);
   };
 
   const resetForm = () => {
@@ -198,29 +241,78 @@ export const DailySchedulePage = () => {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Class</label>
-                <select
-                  className="form-select"
-                  value={form.className}
-                  onChange={(e) => setForm({ ...form, className: e.target.value, section: '' })}
-                  disabled={!classesLoaded || classOptions.length === 0}
-                >
-                  {classOptions.length === 0 ? (
-                    <option value="">{classesLoaded ? 'No classes added yet' : 'Loading...'}</option>
-                  ) : (
-                    classOptions.map((name) => (
+                {addingClass ? (
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <input
+                      className="form-input"
+                      style={{ minWidth: 0 }}
+                      autoFocus
+                      value={newClassName}
+                      onChange={(e) => setNewClassName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitNewClass(); } }}
+                      placeholder="e.g. State Board Boys"
+                    />
+                    <button type="button" className="btn btn-primary btn-sm" onClick={commitNewClass} title="Add class"><Plus size={14} /></button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setAddingClass(false); setNewClassName(''); }} title="Cancel"><X size={14} /></button>
+                  </div>
+                ) : (
+                  <select
+                    className="form-select"
+                    value={form.className}
+                    onChange={(e) => {
+                      if (e.target.value === ADD_MANUALLY) {
+                        setAddingClass(true);
+                      } else {
+                        setForm({ ...form, className: e.target.value, section: '' });
+                      }
+                    }}
+                    disabled={!optionsLoaded}
+                  >
+                    {!optionsLoaded && <option value="">Loading...</option>}
+                    {optionsLoaded && classOptions.length === 0 && <option value="">No classes yet — add one</option>}
+                    {classOptions.map((name) => (
                       <option key={name} value={name}>{toDisplayClassName(name)}</option>
-                    ))
-                  )}
-                </select>
+                    ))}
+                    <option value={ADD_MANUALLY}>+ Add class manually…</option>
+                  </select>
+                )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Section</label>
-                <select className="form-select" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>
-                  <option value="">No Section</option>
-                  {sectionOptions.map((s) => (
-                    <option key={s} value={s}>Section {s}</option>
-                  ))}
-                </select>
+                {addingSection ? (
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <input
+                      className="form-input"
+                      style={{ minWidth: 0 }}
+                      autoFocus
+                      value={newSectionName}
+                      onChange={(e) => setNewSectionName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitNewSection(); } }}
+                      placeholder="e.g. A or Morning"
+                    />
+                    <button type="button" className="btn btn-primary btn-sm" onClick={commitNewSection} title="Add section"><Plus size={14} /></button>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setAddingSection(false); setNewSectionName(''); }} title="Cancel"><X size={14} /></button>
+                  </div>
+                ) : (
+                  <select
+                    className="form-select"
+                    value={form.section}
+                    onChange={(e) => {
+                      if (e.target.value === ADD_MANUALLY) {
+                        setAddingSection(true);
+                      } else {
+                        setForm({ ...form, section: e.target.value });
+                      }
+                    }}
+                    disabled={!form.className}
+                  >
+                    <option value="">No Section</option>
+                    {sectionOptions.map((s) => (
+                      <option key={s} value={s}>Section {s}</option>
+                    ))}
+                    <option value={ADD_MANUALLY}>+ Add section manually…</option>
+                  </select>
+                )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Subject</label>

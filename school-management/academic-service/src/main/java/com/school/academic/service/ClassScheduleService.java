@@ -27,6 +27,11 @@ public class ClassScheduleService {
                 : scheduleRepository.findByClassNameAndSchoolIdOrderByScheduleDateDescBlockAsc(className, schoolId);
     }
 
+    /** Class names this school has already scheduled — keeps manually-typed classes in the dropdown. */
+    public List<String> getScheduledClassNames(Long schoolId) {
+        return scheduleRepository.findDistinctClassNamesBySchoolId(schoolId);
+    }
+
     public ClassSchedule create(ClassSchedule entry, Long schoolId) {
         com.school.academic.service.AcademicService.requireSchoolId(schoolId);
         entry.setSchoolId(schoolId);

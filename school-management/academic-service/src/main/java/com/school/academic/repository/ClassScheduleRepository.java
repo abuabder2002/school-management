@@ -21,4 +21,7 @@ public interface ClassScheduleRepository extends JpaRepository<ClassSchedule, Lo
     List<ClassSchedule> findByClassNameAndScheduleDateAndSchoolIdOrderByBlockAsc(String className, LocalDate scheduleDate, Long schoolId);
 
     Optional<ClassSchedule> findByIdAndSchoolId(Long id, Long schoolId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT s.className FROM ClassSchedule s WHERE s.schoolId = :schoolId AND s.className IS NOT NULL")
+    List<String> findDistinctClassNamesBySchoolId(@org.springframework.data.repository.query.Param("schoolId") Long schoolId);
 }

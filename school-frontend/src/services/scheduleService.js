@@ -6,6 +6,12 @@ export const scheduleService = {
     return response.data;
   },
 
+  // Class names this school has already scheduled (keeps manually-typed classes in the dropdown).
+  getScheduledClasses: async () => {
+    const response = await api.get('/api/academic/schedule/classes');
+    return response.data;
+  },
+
   create: async (entry) => {
     const response = await api.post('/api/academic/schedule', entry);
     return response.data;

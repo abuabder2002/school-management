@@ -40,6 +40,16 @@ public class ScheduleController {
         return ResponseEntity.ok(ApiResponse.success(scheduleService.getForClass(className, section, parsedDate, schoolId)));
     }
 
+    @GetMapping("/classes")
+    public ResponseEntity<ApiResponse<List<String>>> getScheduledClasses(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        Long schoolId = resolveSchoolId(authHeader, null);
+        if (schoolId == null) {
+            throw new BadRequestException("schoolId could not be resolved.");
+        }
+        return ResponseEntity.ok(ApiResponse.success(scheduleService.getScheduledClassNames(schoolId)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<ClassSchedule>> create(
             @RequestBody ClassSchedule entry,

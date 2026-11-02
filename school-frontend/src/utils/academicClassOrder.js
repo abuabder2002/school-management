@@ -57,10 +57,10 @@ export const getClassAcademicRank = (className) => {
   if (clean === 'XI') return 13;
   if (clean === 'XII') return 14;
 
-  // Numeric standards: 1 to 12
-  const numMatch = clean.match(/^\d+/);
+  // Numeric standards: 1 to 12 (whole value only — "2 Boys" or "Batch 2" are custom class names)
+  const numMatch = clean.match(/^(\d+)(?:ST|ND|RD|TH)?$/);
   if (numMatch) {
-    return 2 + parseInt(numMatch[0], 10);
+    return 2 + parseInt(numMatch[1], 10);
   }
 
   return 100;
@@ -106,7 +106,7 @@ export const toExcelClassName = (className) => {
   if (clean === 'XI') return 'XI';
   if (clean === 'XII') return 'XII';
 
-  const m = clean.match(/^(\d+)/);
+  const m = clean.match(/^(\d+)(?:ST|ND|RD|TH)?$/);
   if (m) {
     const num = parseInt(m[1], 10);
     const roman = {
@@ -136,7 +136,7 @@ export const toApplicationClassName = (val) => {
   };
   if (romanMap[clean]) return romanMap[clean];
 
-  const m = clean.match(/^(\d+)/);
+  const m = clean.match(/^(\d+)(?:ST|ND|RD|TH)?$/);
   if (m) {
     return `Class ${parseInt(m[1], 10)}`;
   }
