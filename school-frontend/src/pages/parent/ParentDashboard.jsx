@@ -504,7 +504,7 @@ export const ParentDashboard = () => {
                         <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '2px' }}>
                           <Calendar size={11} /> {formatDate(n.date)}
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.4, whiteSpace: 'pre-line' }}>
                           {n.message}
                         </div>
                       </div>
@@ -875,7 +875,7 @@ export const ParentDashboard = () => {
                         <Calendar size={11} /> {formatDate(n.date)}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
                       {n.message}
                     </div>
                   </div>

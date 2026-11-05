@@ -7,6 +7,7 @@ import { academicService } from '../../services/academicService';
 import { leaveService } from '../../services/leaveService';
 import { feeService } from '../../services/feeService';
 import { authService } from '../../services/authService';
+import { Modal } from '../../components/common/Modal';
 import {
   Users,
   CalendarCheck,
@@ -23,6 +24,7 @@ import {
   Clock,
   Cake,
   GraduationCap,
+  ShieldCheck,
   Trash2,
   LayoutGrid,
   ChevronDown,
@@ -59,6 +61,8 @@ export const AdminDashboard = () => {
   const [upcomingExams, setUpcomingExams] = useState([]);
   const [feeSummary, setFeeSummary] = useState({ totalBilled: 0, totalPaid: 0, totalOutstanding: 0 });
   const [upcomingBirthdays, setUpcomingBirthdays] = useState([]);
+  const [allBirthdayPeople, setAllBirthdayPeople] = useState([]);
+  const [showAllBirthdays, setShowAllBirthdays] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clearingData, setClearingData] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
@@ -147,7 +151,7 @@ export const AdminDashboard = () => {
         });
       }
 
-      // Upcoming Birthdays (students + teachers, next 30 days, soonest first)
+      // Upcoming Birthdays: students + all staff (teachers and admins), soonest first.
       let birthdayStudentsList = [];
       if (birthdayStudentsRes.status === 'fulfilled' && birthdayStudentsRes.value) {
         const val = birthdayStudentsRes.value;
@@ -158,13 +162,14 @@ export const AdminDashboard = () => {
         const val = staffRes.value;
         staffList = val.success && val.data ? val.data : [];
       }
-      const birthdayPeople = [
+      const allBirthdays = [
         ...birthdayStudentsList.map((s) => ({ name: s.name, kind: 'student', dob: s.dateOfBirth, meta: s.className ? `${s.className}${s.section ? ` (${s.section})` : ''}` : '' })),
-        ...staffList.filter((s) => s.role === 'TEACHER').map((s) => ({ name: s.name, kind: 'teacher', dob: s.dateOfBirth, meta: 'Teacher' })),
+        ...staffList.map((s) => ({ name: s.name, kind: s.role === 'ADMIN' ? 'admin' : 'teacher', dob: s.dateOfBirth, meta: s.role === 'ADMIN' ? 'Administrator' : 'Teacher' })),
       ]
         .map((p) => ({ ...p, daysUntil: daysUntilNextBirthday(p.dob) }))
-        .filter((p) => p.daysUntil !== null && p.daysUntil <= 30)
+        .filter((p) => p.daysUntil !== null)
         .sort((a, b) => a.daysUntil - b.daysUntil || (a.name || '').localeCompare(b.name || ''));
+      const birthdayPeople = allBirthdays.filter((p) => p.daysUntil <= 1);
 
       setStats({
         studentsCount: totalStudentsCount || studentsList.length,
@@ -179,7 +184,8 @@ export const AdminDashboard = () => {
         .sort((a, b) => String(a.examDate).localeCompare(String(b.examDate)));
       setUpcomingExams(upcoming.slice(0, 4));
       setFeeSummary({ totalBilled: billed, totalPaid: paid, totalOutstanding: outstanding });
-      setUpcomingBirthdays(birthdayPeople.slice(0, 8));
+      setUpcomingBirthdays(birthdayPeople);
+      setAllBirthdayPeople(allBirthdays);
     } catch (err) {
       console.error('Error fetching dashboard stats', err);
     } finally {
@@ -435,52 +441,87 @@ export const AdminDashboard = () => {
               <Cake size={16} color="var(--warning)" />
               Upcoming Birthdays
             </h3>
-            <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>Next 30 days</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>Today & Tomorrow</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                onClick={() => setShowAllBirthdays(true)}
+              >
+                View All
+              </button>
+            </div>
           </div>
           <div style={{ padding: '0.75rem 1.25rem' }}>
             {upcomingBirthdays.length === 0 ? (
               <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                No birthdays in the next 30 days.
+                No birthdays today or tomorrow.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {upcomingBirthdays.map((p, idx) => {
-                  const isTeacher = p.kind === 'teacher';
-                  const when = p.daysUntil === 0 ? 'Today' : p.daysUntil === 1 ? 'Tomorrow' : `In ${p.daysUntil} days`;
-                  return (
-                    <div
-                      key={`${p.kind}-${p.name}-${idx}`}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0.5rem 0',
-                        borderBottom: '1px solid var(--border-subtle)',
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          {isTeacher ? <GraduationCap size={13} color="var(--primary)" /> : <Users size={13} color="var(--text-muted)" />}
-                          {p.name}
-                          <span className={`badge ${isTeacher ? 'badge-primary' : 'badge-secondary'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
-                            {isTeacher ? 'Teacher' : 'Student'}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {p.meta}
-                        </div>
-                      </div>
-                      <span className={`badge ${p.daysUntil === 0 ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '0.7rem' }}>
-                        {when}
-                      </span>
-                    </div>
-                  );
-                })}
+                {upcomingBirthdays.map((p, idx) => (
+                  <BirthdayRow key={`${p.kind}-${p.name}-${idx}`} person={p} />
+                ))}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showAllBirthdays}
+        onClose={() => setShowAllBirthdays(false)}
+        title="All Upcoming Birthdays"
+        icon={Cake}
+        maxWidth="520px"
+      >
+        {allBirthdayPeople.length === 0 ? (
+          <div style={{ padding: '1rem 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+            No student or staff birthdays on record.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
+            {allBirthdayPeople.map((p, idx) => (
+              <BirthdayRow key={`${p.kind}-${p.name}-${idx}`} person={p} />
+            ))}
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+// One row in the Upcoming Birthdays widget and its "View All" modal.
+const BirthdayRow = ({ person: p }) => {
+  const kindLabel = p.kind === 'admin' ? 'Administrator' : p.kind === 'teacher' ? 'Teacher' : 'Student';
+  const Icon = p.kind === 'admin' ? ShieldCheck : p.kind === 'teacher' ? GraduationCap : Users;
+  const when = p.daysUntil === 0 ? 'Today' : p.daysUntil === 1 ? 'Tomorrow' : `In ${p.daysUntil} days`;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0.5rem 0',
+        borderBottom: '1px solid var(--border-subtle)',
+      }}
+    >
+      <div>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Icon size={13} color={p.kind === 'student' ? 'var(--text-muted)' : 'var(--primary)'} />
+          {p.name}
+          <span className={`badge ${p.kind === 'student' ? 'badge-secondary' : 'badge-primary'}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
+            {kindLabel}
+          </span>
+        </div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {p.meta}
+        </div>
+      </div>
+      <span className={`badge ${p.daysUntil === 0 ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '0.7rem' }}>
+        {when}
+      </span>
     </div>
   );
 };

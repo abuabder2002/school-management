@@ -548,7 +548,7 @@ export const TeacherDashboard = () => {
                           {n.audience === 'TEACHERS' ? 'Teachers' : n.audience === 'BOTH' ? 'All Users' : n.audience}
                         </span>
                       </td>
-                      <td style={{ maxWidth: '460px', fontSize: '0.875rem' }}>{n.message}</td>
+                      <td style={{ maxWidth: '460px', fontSize: '0.875rem', whiteSpace: 'pre-line' }}>{n.message}</td>
                     </tr>
                   ))
                 )}

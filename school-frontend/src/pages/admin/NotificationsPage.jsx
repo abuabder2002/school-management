@@ -316,7 +316,7 @@ export const NotificationsPage = () => {
                         {audienceLabel(n.audience)}
                       </span>
                     </td>
-                    <td style={{ maxWidth: '480px', lineHeight: 1.45, color: 'var(--text-main)' }}>
+                    <td style={{ maxWidth: '480px', lineHeight: 1.45, color: 'var(--text-main)', whiteSpace: 'pre-line' }}>
                       {n.message}
                     </td>
                     <td style={{ textAlign: 'center' }}>
