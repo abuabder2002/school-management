@@ -378,10 +378,14 @@ export const BoardResultsPage = () => {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Class *</label>
-                <select className="form-select" value={form.standard} onChange={(e) => setForm({ ...form, standard: e.target.value })}>
-                  <option value="X">X</option>
-                  <option value="XII">XII</option>
-                </select>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. X, XII"
+                  value={form.standard}
+                  onChange={(e) => setForm({ ...form, standard: e.target.value })}
+                  required
+                />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Academic Year *</label>
