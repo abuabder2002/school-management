@@ -38,3 +38,5 @@ skills-lock.json
 
 # Pre-deploy DB backup dumps (local scratch, not source)
 .deploy-backups/
+.vercel
+.env*

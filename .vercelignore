@@ -1,0 +1,13 @@
+school-management
+docs
+e2e
+.deploy-backups
+.agents
+.superpowers
+MICROSERVICES_SERVICE_COMMUNICATION_GUIDE.html
+MICROSERVICES_SERVICE_COMMUNICATION_GUIDE.pdf
+MICROSERVICES_SERVICE_COMMUNICATION_GUIDE.md
+*.sql
+.github
+school-frontend/package-lock.json
+school-frontend/node_modules
