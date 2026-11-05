@@ -509,13 +509,24 @@ public class FeeService {
      * Fetch recent payments with student name and class details for ERP finance management dashboard.
      */
     public List<RecentPaymentDTO> getRecentPayments(int limit, Long schoolId) {
+        return getRecentPayments(limit, null, null, schoolId);
+    }
+
+    /** Same as above, optionally narrowed to an inclusive payment-date range (either end may be null). */
+    public List<RecentPaymentDTO> getRecentPayments(int limit, LocalDate fromDate, LocalDate toDate, Long schoolId) {
         try {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                     0,
                     limit > 0 ? limit : 10,
                     org.springframework.data.domain.Sort.by("paymentDate").descending().and(org.springframework.data.domain.Sort.by("id").descending())
             );
-            List<Payment> payments = paymentRepository.findBySchoolId(schoolId, pageable).getContent();
+            List<Payment> payments = (fromDate != null || toDate != null)
+                    ? paymentRepository.findBySchoolIdAndPaymentDateBetween(
+                            schoolId,
+                            fromDate != null ? fromDate : LocalDate.of(1900, 1, 1),
+                            toDate != null ? toDate : LocalDate.of(9999, 12, 31),
+                            pageable).getContent()
+                    : paymentRepository.findBySchoolId(schoolId, pageable).getContent();
             if (payments == null || payments.isEmpty()) {
                 return Collections.emptyList();
             }

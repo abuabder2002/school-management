@@ -165,6 +165,7 @@ public class StudentServiceClient {
                     .admissionNumber((String) item.get("admissionNumber"))
                     .name((String) item.get("name"))
                     .className((String) item.get("className"))
+                    .section((String) item.get("section"))
                     .isActive(isActive)
                     .build());
         }

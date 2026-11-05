@@ -21,6 +21,12 @@ export const studentService = {
     return response.data;
   },
 
+  // Sections this school's own students actually use in a class — never a fixed A/B/C/D list.
+  getSectionsForClass: async (className) => {
+    const response = await api.get(`/api/students/class/${encodeURIComponent(className)}/sections`);
+    return response.data;
+  },
+
   createStudent: async (studentData) => {
     const response = await api.post('/api/students', studentData);
     return response.data;

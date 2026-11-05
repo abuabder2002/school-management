@@ -95,6 +95,8 @@ export const StudentsPage = () => {
   const [viewingStudent, setViewingStudent] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sectionFilter, setSectionFilter] = useState('ALL');
+  // Sections actually used by this school's own students in the selected class — never a fixed list.
+  const [classSections, setClassSections] = useState([]);
 
   // Parent login — reset from inside the View Student modal
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -398,8 +400,23 @@ export const StudentsPage = () => {
   const handleOpenClassDetails = (className) => {
     setSelectedClass(className);
     setClassSearch('');
+    setSectionFilter('ALL');
     setView('class-details');
     loadStudentsForClass(className, '', 1);
+    loadSectionsForClass(className);
+  };
+
+  // Sections this school's own students actually use in this class, for the Section filter dropdown.
+  const loadSectionsForClass = async (className) => {
+    try {
+      const res = await studentService.getSectionsForClass(className);
+      const list = (res && res.success && Array.isArray(res.data)) ? res.data
+        : (Array.isArray(res) ? res : (res?.data?.data || []));
+      setClassSections(list);
+    } catch (err) {
+      console.error('Failed to load sections for class:', err);
+      setClassSections([]);
+    }
   };
 
   // Return to Class Student Summary view
@@ -407,6 +424,7 @@ export const StudentsPage = () => {
     setView('summary');
     setSelectedClass('');
     setClassSearch('');
+    setClassSections([]);
     loadClassSummaries();
   };
 
@@ -607,6 +625,7 @@ export const StudentsPage = () => {
 
       if (view === 'class-details' && selectedClass) {
         loadStudentsForClass(selectedClass, classSearch, pagination.page);
+        loadSectionsForClass(selectedClass);
       }
       if (masterSearch) {
         handleMasterSearch(masterSearch, masterPagination.page);
@@ -1476,10 +1495,9 @@ export const StudentsPage = () => {
                 title="Filter by Section"
               >
                 <option value="ALL">All Sections</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-                <option value="D">Section D</option>
+                {classSections.map((sec) => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
               </select>
 
               <select
@@ -2052,6 +2070,7 @@ export const StudentsPage = () => {
         onSuccess={() => {
           if (view === 'class-details' && selectedClass) {
             loadStudentsForClass(selectedClass, classSearch, pagination.page);
+            loadSectionsForClass(selectedClass);
           }
           if (masterSearch) {
             handleMasterSearch(masterSearch, 1);

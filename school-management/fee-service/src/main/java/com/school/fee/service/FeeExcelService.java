@@ -38,6 +38,7 @@ public class FeeExcelService {
             "Student Name",
             "Adm No",
             "Class",
+            "Section",
             "Term Fees - 1",
             "Term Fees - 2",
             "Term Fees - 3",
@@ -45,6 +46,32 @@ public class FeeExcelService {
             "Exam Fees",
             "Paid Amount"
     };
+
+    /**
+     * Section as typed in a sheet vs. as stored on the student: ignore case, extra spaces and a
+     * leading "Section" word, so "A", " a " and "Section A" all mean the same section.
+     */
+    static String normalizeSection(String section) {
+        if (section == null) return "";
+        String n = section.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        String stripped = n.replaceFirst("^(section|sec)\\b\\s*[-:]?\\s*", "").trim();
+        return stripped.isEmpty() ? n : stripped;
+    }
+
+    /** Of several students sharing a name (and class), the one in the sheet's section; else the first. */
+    private static StudentInfoDTO pickBySection(List<StudentInfoDTO> matches, String rowSection) {
+        String wanted = normalizeSection(rowSection);
+        if (!wanted.isEmpty()) {
+            for (StudentInfoDTO s : matches) {
+                if (normalizeSection(s.getSection()).equals(wanted)) return s;
+            }
+        }
+        return matches.get(0);
+    }
+
+    private static int compareSection(StudentInfoDTO a, StudentInfoDTO b) {
+        return normalizeSection(a.getSection()).compareTo(normalizeSection(b.getSection()));
+    }
 
     /**
      * Generate an Excel template pre-filled with active students.
@@ -60,6 +87,8 @@ public class FeeExcelService {
                     .sorted((a, b) -> {
                         int c = FeeService.naturalClassCompare(a.getClassName(), b.getClassName());
                         if (c != 0) return c;
+                        int sc = compareSection(a, b);
+                        if (sc != 0) return sc;
                         return String.valueOf(a.getName()).compareToIgnoreCase(String.valueOf(b.getName()));
                     })
                     .toList() : Collections.emptyList();
@@ -68,7 +97,8 @@ public class FeeExcelService {
             List<StudentInfoDTO> byClass = studentServiceClient.getActiveStudentsByClass(className, schoolId);
             activeStudents = (byClass != null) ? byClass.stream()
                     .filter(s -> !Boolean.FALSE.equals(s.getIsActive()))
-                    .sorted(Comparator.comparing(s -> s.getName() != null ? s.getName().trim() : ""))
+                    .sorted(Comparator.<StudentInfoDTO, String>comparing(s -> normalizeSection(s.getSection()))
+                            .thenComparing(s -> s.getName() != null ? s.getName().trim() : "", String.CASE_INSENSITIVE_ORDER))
                     .toList() : Collections.emptyList();
             sheetTitle = className + " Billing Template";
         }
@@ -184,6 +214,11 @@ public class FeeExcelService {
                 c3.setCellValue(student.getClassName() != null ? student.getClassName() : (className != null ? className : ""));
                 c3.setCellStyle(centerStyle);
 
+                // Col 4: Section
+                Cell cSection = row.createCell(4);
+                cSection.setCellValue(student.getSection() != null ? student.getSection().trim() : "");
+                cSection.setCellStyle(centerStyle);
+
                 Fee fee = feeMap.get(student.getId());
 
                 double t1 = (fee != null && fee.getTermFees1() != null) ? fee.getTermFees1().doubleValue() : 0.0;
@@ -193,35 +228,35 @@ public class FeeExcelService {
                 double exam = (fee != null && fee.getExamFees() != null) ? fee.getExamFees().doubleValue() : 0.0;
                 double paid = (fee != null && fee.getPaidAmount() != null) ? fee.getPaidAmount().doubleValue() : 0.0;
 
-                // Col 4: Term Fees - 1
-                Cell c4 = row.createCell(4);
-                c4.setCellValue(t1);
-                c4.setCellStyle(numberStyle);
-
-                // Col 5: Term Fees - 2
+                // Col 5: Term Fees - 1
                 Cell c5 = row.createCell(5);
-                c5.setCellValue(t2);
+                c5.setCellValue(t1);
                 c5.setCellStyle(numberStyle);
 
-                // Col 6: Term Fees - 3
+                // Col 6: Term Fees - 2
                 Cell c6 = row.createCell(6);
-                c6.setCellValue(t3);
+                c6.setCellValue(t2);
                 c6.setCellStyle(numberStyle);
 
-                // Col 7: Bus Fees
+                // Col 7: Term Fees - 3
                 Cell c7 = row.createCell(7);
-                c7.setCellValue(bus);
+                c7.setCellValue(t3);
                 c7.setCellStyle(numberStyle);
 
-                // Col 8: Exam Fees
+                // Col 8: Bus Fees
                 Cell c8 = row.createCell(8);
-                c8.setCellValue(exam);
+                c8.setCellValue(bus);
                 c8.setCellStyle(numberStyle);
 
-                // Col 9: Paid Amount
+                // Col 9: Exam Fees
                 Cell c9 = row.createCell(9);
-                c9.setCellValue(paid);
+                c9.setCellValue(exam);
                 c9.setCellStyle(numberStyle);
+
+                // Col 10: Paid Amount
+                Cell c10 = row.createCell(10);
+                c10.setCellValue(paid);
+                c10.setCellStyle(numberStyle);
 
                 // Hidden Cols: Internal Student ID & Admission Number
                 Cell cHiddenId = row.createCell(TEMPLATE_HEADERS.length);
@@ -323,6 +358,7 @@ public class FeeExcelService {
             int studentNameCol = -1;
             int admissionNoCol = -1;
             int classCol = -1;
+            int sectionCol = -1;
             int term1Col = -1;
             int term2Col = -1;
             int term3Col = -1;
@@ -348,6 +384,8 @@ public class FeeExcelService {
                     if (admissionNoCol == -1) admissionNoCol = c;
                 } else if (clean.equals("class") || clean.equals("grade") || clean.equals("standard") || clean.equals("classname")) {
                     if (classCol == -1) classCol = c;
+                } else if (clean.equals("section") || clean.equals("sectionname") || clean.equals("sec")) {
+                    if (sectionCol == -1) sectionCol = c;
                 } else if (clean.contains("termfee1") || clean.contains("termfees1") || clean.contains("term1") || clean.equals("term1fee")) {
                     if (term1Col == -1) term1Col = c;
                 } else if (clean.contains("termfee2") || clean.contains("termfees2") || clean.contains("term2") || clean.equals("term2fee")) {
@@ -371,18 +409,22 @@ public class FeeExcelService {
                 }
             }
 
-            // Defaults if matching headers not found or standard template positions used
+            // Defaults if matching headers not found or standard template positions used. A sheet with
+            // a Section column follows the current template layout; one without it is the older layout
+            // (fee columns start one place earlier).
+            int off = sectionCol >= 0 ? 1 : 0;
             if (studentNameCol == -1) studentNameCol = 1;
             if (admissionNoCol == -1) admissionNoCol = 2;
             if (classCol == -1) classCol = 3;
-            if (term1Col == -1) term1Col = 4;
-            if (term2Col == -1) term2Col = 5;
-            if (term3Col == -1) term3Col = 6;
-            if (busCol == -1) busCol = 7;
-            if (examCol == -1) examCol = 8;
-            if (paidCol == -1) paidCol = 9;
-            if (hiddenIdCol == -1) hiddenIdCol = TEMPLATE_HEADERS.length;
-            if (hiddenAdmCol == -1) hiddenAdmCol = TEMPLATE_HEADERS.length + 1;
+            if (term1Col == -1) term1Col = 4 + off;
+            if (term2Col == -1) term2Col = 5 + off;
+            if (term3Col == -1) term3Col = 6 + off;
+            if (busCol == -1) busCol = 7 + off;
+            if (examCol == -1) examCol = 8 + off;
+            if (paidCol == -1) paidCol = 9 + off;
+            if (hiddenIdCol == -1) hiddenIdCol = TEMPLATE_HEADERS.length - 1 + off;
+            // The hidden admission-number column always sits right after the hidden student-id column.
+            if (hiddenAdmCol == -1) hiddenAdmCol = hiddenIdCol + 1;
 
             int lastRowNum = sheet.getLastRowNum();
             for (int r = 1; r <= lastRowNum; r++) {
@@ -396,6 +438,7 @@ public class FeeExcelService {
                 String studentName = studentNameCol >= 0 ? getCellString(row.getCell(studentNameCol)) : null;
                 String rowClassName = classCol >= 0 ? getCellString(row.getCell(classCol)) : null;
                 String rowAdmNo = admissionNoCol >= 0 ? getCellString(row.getCell(admissionNoCol)) : null;
+                String rowSection = sectionCol >= 0 ? getCellString(row.getCell(sectionCol)) : null;
 
                 if (studentName == null || studentName.isBlank()) {
                     errors.add(BulkUploadBillingError.builder()
@@ -434,7 +477,7 @@ public class FeeExcelService {
                         String key = studentName.trim().toLowerCase() + "|" + rowClassName.trim().toLowerCase();
                         List<StudentInfoDTO> matches = studentByNameAndClassMap.get(key);
                         if (matches != null && !matches.isEmpty()) {
-                            matchedStudent = matches.get(0);
+                            matchedStudent = pickBySection(matches, rowSection);
                         }
                     }
 
@@ -442,7 +485,7 @@ public class FeeExcelService {
                     if (matchedStudent == null) {
                         List<StudentInfoDTO> nameMatches = studentByNameMap.get(studentName.trim().toLowerCase());
                         if (nameMatches != null && !nameMatches.isEmpty()) {
-                            matchedStudent = nameMatches.get(0);
+                            matchedStudent = pickBySection(nameMatches, rowSection);
                         }
                     }
                 }
@@ -507,6 +550,26 @@ public class FeeExcelService {
                             .errorType("Class Mismatch")
                             .errorMessage(String.format("Student %s belongs to %s, but the uploaded Excel specifies %s.",
                                     admOrName, matchedStudent.getClassName(), rowClassName))
+                            .build());
+                    continue;
+                }
+
+                // Section validation: only when the sheet actually gives one for this row
+                if (rowSection != null && !normalizeSection(rowSection).isEmpty()
+                        && !normalizeSection(rowSection).equals(normalizeSection(matchedStudent.getSection()))) {
+                    String admOrName = (matchedStudent.getAdmissionNumber() != null && !matchedStudent.getAdmissionNumber().isBlank())
+                            ? matchedStudent.getAdmissionNumber() : matchedStudent.getName();
+                    String onFile = normalizeSection(matchedStudent.getSection()).isEmpty()
+                            ? "has no section recorded"
+                            : "belongs to section " + matchedStudent.getSection().trim();
+                    errors.add(BulkUploadBillingError.builder()
+                            .row(excelRow)
+                            .studentName(matchedStudent.getName())
+                            .admissionNumber(matchedStudent.getAdmissionNumber() != null ? matchedStudent.getAdmissionNumber() : rowAdmNo)
+                            .className(matchedStudent.getClassName())
+                            .errorType("Section Mismatch")
+                            .errorMessage(String.format("Student %s %s, but the uploaded Excel specifies section %s.",
+                                    admOrName, onFile, rowSection.trim()))
                             .build());
                     continue;
                 }

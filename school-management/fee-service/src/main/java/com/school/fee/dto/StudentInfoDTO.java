@@ -16,5 +16,6 @@ public class StudentInfoDTO {
     private String admissionNumber;
     private String name;
     private String className;
+    private String section;
     private Boolean isActive;
 }

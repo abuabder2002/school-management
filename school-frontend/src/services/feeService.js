@@ -68,9 +68,14 @@ export const feeService = {
     return response.data;
   },
 
-  // Recent Payments for ERP Finance Management
-  getRecentPayments: async (limit = 10) => {
-    const response = await api.get(`/api/fees/payments/recent?limit=${limit}`);
+  // Recent Payments for ERP Finance Management. fromDate/toDate (YYYY-MM-DD) narrow the range;
+  // when either is set the backend ignores the 10-row default and returns everything in range
+  // (still capped by limit), so pass a higher limit alongside a date filter.
+  getRecentPayments: async (limit = 10, fromDate = '', toDate = '') => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (fromDate) params.set('fromDate', fromDate);
+    if (toDate) params.set('toDate', toDate);
+    const response = await api.get(`/api/fees/payments/recent?${params.toString()}`);
     return response.data;
   }
 };

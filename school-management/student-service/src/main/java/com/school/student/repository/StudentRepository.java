@@ -52,6 +52,14 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
     @org.springframework.data.jpa.repository.Query("SELECT DISTINCT s.className FROM Student s WHERE s.className IS NOT NULL AND s.schoolId = :schoolId ORDER BY s.className")
     List<String> findDistinctClassNamesBySchoolId(@org.springframework.data.repository.query.Param("schoolId") Long schoolId);
 
+    // Sections actually used by this school's own students in a class — never a fixed A/B/C/D list,
+    // since one school may use "North"/"South" or no sections at all.
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT s.section FROM Student s WHERE s.schoolId = :schoolId " +
+            "AND LOWER(s.className) = LOWER(:className) AND s.section IS NOT NULL AND s.section <> '' ORDER BY s.section")
+    List<String> findDistinctSectionsByClassNameAndSchoolId(
+            @org.springframework.data.repository.query.Param("className") String className,
+            @org.springframework.data.repository.query.Param("schoolId") Long schoolId);
+
     List<Student> findByParentId(Long parentId);
 
     List<Student> findByAdmissionNumberIn(java.util.Collection<String> admissionNumbers);

@@ -168,6 +168,21 @@ public class StudentController {
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
+    /** GET /api/students/class/{className}/sections — Distinct sections this school's students use in a class */
+    @GetMapping("/class/{className}/sections")
+    public ResponseEntity<ApiResponse<List<String>>> getDistinctSectionsForClass(
+            @PathVariable("className") String className,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<List<String>>> denied = denyUnlessRoleOrInternal(authHeader, "ADMIN", "TEACHER");
+        if (denied != null) return denied;
+        Long schoolId = resolveSchoolId(authHeader, schoolIdParam);
+        if (schoolId == null) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("schoolId could not be resolved."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(studentService.getDistinctSectionsForClass(className, schoolId)));
+    }
+
     /** GET /api/students/active-by-class — All active students grouped by class */
     @GetMapping("/active-by-class")
     public ResponseEntity<ApiResponse<java.util.Map<String, List<StudentDTO>>>> getActiveStudentsGroupedByClass(

@@ -224,10 +224,14 @@ public class FeeController {
     @GetMapping("/payments/recent")
     public ResponseEntity<ApiResponse<List<RecentPaymentDTO>>> getRecentPayments(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
+            @RequestParam(value = "fromDate", required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<RecentPaymentDTO>>> denied = denyUnlessRole(authHeader, "ADMIN");
         if (denied != null) return denied;
-        List<RecentPaymentDTO> payments = feeService.getRecentPayments(limit, resolveSchoolId(authHeader));
+        List<RecentPaymentDTO> payments = feeService.getRecentPayments(limit, fromDate, toDate, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 

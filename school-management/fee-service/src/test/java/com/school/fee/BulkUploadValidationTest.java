@@ -55,6 +55,9 @@ public class BulkUploadValidationTest {
             for (int i = 0; i < FeeExcelService.TEMPLATE_HEADERS.length; i++) {
                 hRow.createCell(i).setCellValue(FeeExcelService.TEMPLATE_HEADERS[i]);
             }
+            // Find the fee column by its header rather than a fixed position, so adding template columns
+            // (like Section) doesn't silently turn these amounts into something else.
+            int term1Col = java.util.Arrays.asList(FeeExcelService.TEMPLATE_HEADERS).indexOf("Term Fees - 1");
 
             // Row 1: Abu
             Row r1 = sheet.createRow(1);
@@ -62,7 +65,7 @@ public class BulkUploadValidationTest {
             r1.createCell(1).setCellValue("Abu");
             r1.createCell(2).setCellValue("ADM-01");
             r1.createCell(3).setCellValue("Class 10");
-            r1.createCell(4).setCellValue(1000);
+            r1.createCell(term1Col).setCellValue(1000);
 
             // Row 2: Abu (Duplicate!)
             Row r2 = sheet.createRow(2);
@@ -70,7 +73,7 @@ public class BulkUploadValidationTest {
             r2.createCell(1).setCellValue("Abu");
             r2.createCell(2).setCellValue("ADM-01");
             r2.createCell(3).setCellValue("Class 10");
-            r2.createCell(4).setCellValue(1000);
+            r2.createCell(term1Col).setCellValue(1000);
 
             // Row 3: Ramya (Inactive!)
             Row r3 = sheet.createRow(3);
@@ -78,7 +81,7 @@ public class BulkUploadValidationTest {
             r3.createCell(1).setCellValue("Ramya");
             r3.createCell(2).setCellValue("ADM-03");
             r3.createCell(3).setCellValue("Class 10");
-            r3.createCell(4).setCellValue(1000);
+            r3.createCell(term1Col).setCellValue(1000);
 
             // Row 4: David (Class 9!)
             Row r4 = sheet.createRow(4);
@@ -86,7 +89,7 @@ public class BulkUploadValidationTest {
             r4.createCell(1).setCellValue("David");
             r4.createCell(2).setCellValue("ADM-04");
             r4.createCell(3).setCellValue("Class 10");
-            r4.createCell(4).setCellValue(1000);
+            r4.createCell(term1Col).setCellValue(1000);
 
             // Row 5: Mubeen (Negative Amount!)
             Row r5 = sheet.createRow(5);
@@ -94,7 +97,7 @@ public class BulkUploadValidationTest {
             r5.createCell(1).setCellValue("Mubeen");
             r5.createCell(2).setCellValue("ADM-02");
             r5.createCell(3).setCellValue("Class 10");
-            r5.createCell(4).setCellValue(-500);
+            r5.createCell(term1Col).setCellValue(-500);
 
             wb.write(out);
 

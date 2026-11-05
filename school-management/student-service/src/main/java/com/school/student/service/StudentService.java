@@ -128,6 +128,12 @@ public class StudentService {
                 .toList();
     }
 
+    /** Sections this school's own students actually use in a class — never a fixed A/B/C/D list. */
+    public List<String> getDistinctSectionsForClass(String className, Long schoolId) {
+        if (className == null || className.isBlank()) return List.of();
+        return studentRepository.findDistinctSectionsByClassNameAndSchoolId(className.trim(), schoolId);
+    }
+
     public java.util.Map<String, List<StudentDTO>> getActiveStudentsGroupedByClass(Long schoolId) {
         return studentRepository.findByIsActiveTrueAndSchoolId(schoolId).stream()
                 .filter(s -> s.getClassName() != null && !s.getClassName().isBlank())

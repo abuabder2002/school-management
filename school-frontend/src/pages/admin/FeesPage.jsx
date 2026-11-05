@@ -49,6 +49,8 @@ export const FeesPage = () => {
   // Recent Payments Data (Section 4)
   const [recentPayments, setRecentPayments] = useState([]);
   const [loadingRecentPayments, setLoadingRecentPayments] = useState(false);
+  const [paymentsFromDate, setPaymentsFromDate] = useState('');
+  const [paymentsToDate, setPaymentsToDate] = useState('');
 
   // Filters for Main View
   const [academicYearFilter, setAcademicYearFilter] = useState('2026-2027');
@@ -102,9 +104,14 @@ export const FeesPage = () => {
 
   useEffect(() => {
     loadClassSummaries();
-    loadRecentPayments();
     loadAllActiveStudents();
   }, []);
+
+  // Reload whenever the Recent Payments date range changes (including back to "no filter").
+  useEffect(() => {
+    loadRecentPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentsFromDate, paymentsToDate]);
 
   const handleExportBillingCSV = () => {
     if (view === 'class-details' && filteredBillingRows.length > 0) {
@@ -178,7 +185,8 @@ export const FeesPage = () => {
   const loadRecentPayments = async () => {
     try {
       setLoadingRecentPayments(true);
-      const res = await feeService.getRecentPayments(10);
+      const hasDateFilter = Boolean(paymentsFromDate || paymentsToDate);
+      const res = await feeService.getRecentPayments(hasDateFilter ? 500 : 10, paymentsFromDate, paymentsToDate);
       if (res && res.success && Array.isArray(res.data)) {
         setRecentPayments(res.data);
       } else if (Array.isArray(res)) {
@@ -1235,16 +1243,46 @@ export const FeesPage = () => {
                 <CreditCard size={17} style={{ color: '#047857' }} />
                 Recent Payments
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Latest transactions
+                  {(paymentsFromDate || paymentsToDate) ? 'Filtered transactions' : 'Latest transactions'}
                 </span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={paymentsFromDate}
+                  max={paymentsToDate || undefined}
+                  onChange={(e) => setPaymentsFromDate(e.target.value)}
+                  title="From date"
+                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem' }}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to</span>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={paymentsToDate}
+                  min={paymentsFromDate || undefined}
+                  onChange={(e) => setPaymentsToDate(e.target.value)}
+                  title="To date"
+                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem' }}
+                />
+                {(paymentsFromDate || paymentsToDate) && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                    onClick={() => { setPaymentsFromDate(''); setPaymentsToDate(''); }}
+                  >
+                    Clear
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
                   style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                   onClick={loadRecentPayments}
                   disabled={loadingRecentPayments}
+                  title="Refresh"
                 >
                   <RotateCcw size={12} className={loadingRecentPayments ? 'animate-spin' : ''} />
                 </button>
