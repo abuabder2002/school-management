@@ -27,6 +27,15 @@ export const studentService = {
     return response.data;
   },
 
+  // Super Admin only: searches active students across every school at once (Board Results'
+  // "pick a student" flow has no school picker). Each match carries its own schoolId.
+  searchAcrossSchools: async ({ search, className, limit } = {}) => {
+    const response = await api.get('/api/students/search-all-schools', {
+      params: { search: search || undefined, className: className || undefined, limit: limit || undefined },
+    });
+    return response.data;
+  },
+
   createStudent: async (studentData) => {
     const response = await api.post('/api/students', studentData);
     return response.data;

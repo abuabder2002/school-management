@@ -19,6 +19,10 @@ public class StudentDTO {
 
     private Long id;
 
+    // Only populated by endpoints that span schools (the Super Admin cross-school student search);
+    // every other response omits it, since callers already know their own schoolId from their token.
+    private Long schoolId;
+
     @NotBlank(message = "Admission number is required")
     private String admissionNumber;
 

@@ -61,6 +61,7 @@ export const ParentDashboard = () => {
   const [paymentsFromDate, setPaymentsFromDate] = useState('');
   const [paymentsToDate, setPaymentsToDate] = useState('');
   const [marks, setMarks] = useState([]);
+  const [boardResults, setBoardResults] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveReasons, setLeaveReasons] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -129,17 +130,19 @@ export const ParentDashboard = () => {
         console.error('Student load failed', e);
       }
 
-      const [feeRes, mrkRes, lvRes, notifRes, hwRes] = await Promise.allSettled([
+      const [feeRes, mrkRes, lvRes, notifRes, hwRes, boardRes] = await Promise.allSettled([
         feeService.getFeesByStudent(studentId),
         academicService.getMarksByStudent(studentId),
         leaveService.getMyLeave(),
         notificationService.getMyNotifications(studentRecord?.className),
         studentRecord?.className ? homeworkService.getByClass(studentRecord.className) : Promise.resolve(null),
+        academicService.getBoardResultsByStudent(studentId),
       ]);
 
       if (feeRes.status === 'fulfilled' && feeRes.value?.data) setFees(feeRes.value.data);
       if (mrkRes.status === 'fulfilled' && mrkRes.value?.data) setMarks(mrkRes.value.data);
       if (lvRes.status === 'fulfilled' && lvRes.value?.data) setLeaveRequests(lvRes.value.data || []);
+      if (boardRes.status === 'fulfilled' && boardRes.value?.data) setBoardResults(boardRes.value.data || []);
       if (notifRes.status === 'fulfilled' && notifRes.value?.data) setNotifications(notifRes.value.data || []);
       if (hwRes.status === 'fulfilled' && hwRes.value?.data) {
         // Section-specific homework only reaches that section; class-wide homework (no section set) reaches everyone.
@@ -837,6 +840,45 @@ export const ParentDashboard = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Board Result — only shown once a Class X / XII board result exists for this student */}
+      {activeTab === 'marks' && isEnabled('MARKS') && boardResults.length > 0 && (
+        <div className="card" style={{ marginTop: '1.25rem' }}>
+          <div className="card-header">
+            <h3 className="card-title">Board Result</h3>
+          </div>
+          <div style={{ padding: '0 0 0.5rem' }}>
+            {boardResults.map((r) => (
+              <div key={r.id} style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 700 }}>
+                    {r.board === 'STATE_BOARD' ? 'State Board' : r.board} · Class {r.standard} · {r.academicYear}
+                  </span>
+                  <span className="badge badge-success">Total: {r.totalMarks}</span>
+                </div>
+                <div className="table-container" style={{ border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
+                  <table className="table" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th style={{ textAlign: 'right' }}>Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(r.subjects || []).map((s, idx) => (
+                        <tr key={idx}>
+                          <td>{s.subjectName}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{s.marks}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

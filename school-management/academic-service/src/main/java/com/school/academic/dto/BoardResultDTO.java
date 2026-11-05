@@ -18,6 +18,10 @@ public class BoardResultDTO {
 
     private Long id;
 
+    // Populated on every read, used by the Admin portal's read-only Board Results view and the
+    // Super Admin "pick a student" flow, which has no school picker of its own.
+    private Long schoolId;
+
     @NotNull(message = "Student is required")
     private Long studentId;
 

@@ -128,6 +128,22 @@ public class StudentController {
         return ResponseEntity.ok(ApiResponse.success(responseData));
     }
 
+    /**
+     * GET /api/students/search-all-schools — Super Admin's "pick a student" search for Board
+     * Results, spanning every school at once (SUPER_ADMIN only — every other endpoint here is
+     * scoped to one school by design, so this one is deliberately narrow and separate).
+     */
+    @GetMapping("/search-all-schools")
+    public ResponseEntity<ApiResponse<List<StudentDTO>>> searchStudentsAcrossSchools(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "className", required = false) String className,
+            @RequestParam(value = "limit", defaultValue = "50") int limit,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        ResponseEntity<ApiResponse<List<StudentDTO>>> denied = denyUnlessRole(authHeader, "SUPER_ADMIN");
+        if (denied != null) return denied;
+        return ResponseEntity.ok(ApiResponse.success(studentService.searchStudentsAcrossSchools(search, className, limit)));
+    }
+
     /** GET /api/students/class-summary — Student counts grouped by class in academic order */
     @GetMapping("/class-summary")
     public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> getClassStudentSummaries(

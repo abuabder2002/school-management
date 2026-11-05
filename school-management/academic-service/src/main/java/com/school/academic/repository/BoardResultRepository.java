@@ -16,5 +16,7 @@ public interface BoardResultRepository extends JpaRepository<BoardResult, Long> 
 
     List<BoardResult> findBySchoolIdOrderByCreatedAtDesc(Long schoolId);
 
+    List<BoardResult> findByStudentIdAndSchoolIdOrderByCreatedAtDesc(Long studentId, Long schoolId);
+
     Optional<BoardResult> findByIdAndSchoolId(Long id, Long schoolId);
 }

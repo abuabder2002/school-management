@@ -474,6 +474,13 @@ public class AcademicService {
                 .toList();
     }
 
+    /** One student's board results — backs the Admin "view" page and the Parent portal. */
+    public List<BoardResultDTO> getBoardResultsByStudent(Long studentId, Long schoolId) {
+        return boardResultRepository.findByStudentIdAndSchoolIdOrderByCreatedAtDesc(studentId, schoolId).stream()
+                .map(this::toBoardResultDTO)
+                .toList();
+    }
+
     @Transactional
     public BoardResultDTO createBoardResult(BoardResultDTO dto, Long schoolId) {
         requireSchoolId(schoolId);
@@ -560,6 +567,7 @@ public class AcademicService {
                 .toList();
         return BoardResultDTO.builder()
                 .id(result.getId())
+                .schoolId(result.getSchoolId())
                 .studentId(result.getStudentId())
                 .admissionNumber(result.getAdmissionNumber())
                 .studentName(result.getStudentName())

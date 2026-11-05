@@ -45,6 +45,7 @@ const ImportExportPage = lazyPage(() => import('./pages/admin/ImportExportPage')
 const NotificationsPage = lazyPage(() => import('./pages/admin/NotificationsPage'), 'NotificationsPage');
 const ModuleAccessPage = lazyPage(() => import('./pages/admin/ModuleAccessPage'), 'ModuleAccessPage');
 const BoardResultsPage = lazyPage(() => import('./pages/superadmin/BoardResultsPage'), 'BoardResultsPage');
+const AdminBoardResultsPage = lazyPage(() => import('./pages/admin/BoardResultsPage'), 'BoardResultsPage');
 const IdCardsPage = lazyPage(() => import('./pages/admin/IdCardsPage'), 'IdCardsPage');
 const DailySchedulePage = lazyPage(() => import('./pages/admin/DailySchedulePage'), 'DailySchedulePage');
 const VacanciesPage = lazyPage(() => import('./pages/admin/VacanciesPage'), 'VacanciesPage');
@@ -149,6 +150,7 @@ export const App = () => {
                 <Route path="daily-schedule" element={<ModuleGate moduleKey="DAILY_SCHEDULE"><DailySchedulePage /></ModuleGate>} />
                 <Route path="vacancies" element={<ModuleGate moduleKey="VACANCIES"><VacanciesPage /></ModuleGate>} />
                 <Route path="subscription" element={<ModuleGate moduleKey="SUBSCRIPTION"><SubscriptionViewPage /></ModuleGate>} />
+                <Route path="board-results" element={<AdminBoardResultsPage />} />
               </Route>
 
               {/* Teacher Protected Routes */}

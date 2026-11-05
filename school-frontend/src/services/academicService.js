@@ -68,4 +68,11 @@ export const academicService = {
     const response = await api.delete(`/api/academic/board-results/${id}`, { params: schoolId ? { schoolId } : {} });
     return response.data;
   },
+
+  // One student's board result(s) — Admin/Teacher any student in their school, Parent only their
+  // own linked child, Super Admin any (pass schoolId).
+  getBoardResultsByStudent: async (studentId, schoolId) => {
+    const response = await api.get(`/api/academic/board-results/student/${studentId}`, { params: schoolId ? { schoolId } : {} });
+    return response.data;
+  },
 };

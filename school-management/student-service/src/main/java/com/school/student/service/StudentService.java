@@ -122,6 +122,31 @@ public class StudentService {
                 .toList();
     }
 
+    /**
+     * Super Admin's "pick a student" search for Board Results: spans every school (no schoolId
+     * filter), always active students only, sorted by name, capped at {@code limit}. Each match
+     * carries its own schoolId so the caller — who hasn't picked a school first — learns which
+     * school a same-named student belongs to.
+     */
+    public List<StudentDTO> searchStudentsAcrossSchools(String search, String className, int limit) {
+        Specification<Student> spec = Specification.where((root, query, cb) -> cb.isTrue(root.get("isActive")));
+        if (search != null && !search.isBlank()) {
+            String likeSearch = "%" + search.toLowerCase().trim() + "%";
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("name")), likeSearch),
+                    cb.like(cb.lower(root.get("admissionNumber")), likeSearch)
+            ));
+        }
+        if (className != null && !className.isBlank() && !"all".equalsIgnoreCase(className.trim()) && !"all classes".equalsIgnoreCase(className.trim())) {
+            spec = spec.and((root, query, cb) -> cb.equal(cb.lower(root.get("className")), className.toLowerCase().trim()));
+        }
+        return studentRepository.findAll(spec).stream()
+                .sorted(java.util.Comparator.comparing(Student::getName, String.CASE_INSENSITIVE_ORDER))
+                .limit(Math.max(limit, 0))
+                .map(this::toDTO)
+                .toList();
+    }
+
     public List<String> getDistinctClasses(Long schoolId) {
         return studentRepository.findDistinctClassNamesBySchoolId(schoolId).stream()
                 .sorted(com.school.student.util.AcademicClassOrder.CLASS_COMPARATOR)
@@ -354,6 +379,7 @@ public class StudentService {
         }
         return StudentDTO.builder()
                 .id(student.getId())
+                .schoolId(student.getSchoolId())
                 .admissionNumber(student.getAdmissionNumber())
                 .name(student.getName())
                 .dateOfBirth(student.getDateOfBirth())

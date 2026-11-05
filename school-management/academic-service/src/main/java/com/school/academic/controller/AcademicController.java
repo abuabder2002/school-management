@@ -357,6 +357,40 @@ public class AcademicController {
         return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults(resolveSchoolId(authHeader, schoolIdParam))));
     }
 
+    /**
+     * GET /api/academic/board-results/student/{studentId} — One student's board results. Admin,
+     * Teacher and Super Admin (own/named school) may view any student; a Parent only their own
+     * linked child, same isolation as {@link #getMarksByStudent}.
+     */
+    @GetMapping("/board-results/student/{studentId}")
+    public ResponseEntity<ApiResponse<List<BoardResultDTO>>> getBoardResultsByStudent(
+            @PathVariable("studentId") Long studentId,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        if (authHeader != null) {
+            String token = jwtDecoder.extractRaw(authHeader);
+            if (token == null || !jwtDecoder.isValidToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Missing or invalid authentication token."));
+            }
+            String role = normalizeRole(jwtDecoder.getRole(token));
+            boolean allowed = "ADMIN".equals(role) || "TEACHER".equals(role) || "SUPER_ADMIN".equals(role) || "PARENT".equals(role);
+            if (!allowed) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("You are not authorized to view board results."));
+            }
+            if ("PARENT".equals(role)) {
+                Long tokenStudentId = jwtDecoder.getStudentId(token);
+                if (tokenStudentId == null || !tokenStudentId.equals(studentId)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(ApiResponse.error("You are only authorized to view board results for your linked child"));
+                }
+            }
+        }
+        List<BoardResultDTO> results = academicService.getBoardResultsByStudent(studentId, resolveSchoolId(authHeader, schoolIdParam));
+        return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
     @PostMapping("/board-results")
     public ResponseEntity<ApiResponse<BoardResultDTO>> createBoardResult(
             @jakarta.validation.Valid @RequestBody BoardResultDTO dto,
