@@ -209,14 +209,21 @@ public class FeeController {
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 
-    /** GET /api/fees/student/{studentId}/payments — All payments for a student. ADMIN any; PARENT their own child only. */
+    /**
+     * GET /api/fees/student/{studentId}/payments — Payment history for a student (newest first),
+     * optionally narrowed to an inclusive fromDate/toDate range. ADMIN any; PARENT their own child only.
+     */
     @GetMapping("/student/{studentId}/payments")
     public ResponseEntity<ApiResponse<List<Payment>>> getPaymentsByStudent(
             @PathVariable("studentId") Long studentId,
+            @RequestParam(value = "fromDate", required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate toDate,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         ResponseEntity<ApiResponse<List<Payment>>> denied = denyUnlessAdminOrOwnChild(authHeader, studentId);
         if (denied != null) return denied;
-        List<Payment> payments = feeService.getPaymentsByStudent(studentId, resolveSchoolId(authHeader));
+        List<Payment> payments = feeService.getPaymentsByStudent(studentId, fromDate, toDate, resolveSchoolId(authHeader));
         return ResponseEntity.ok(ApiResponse.success(payments));
     }
 

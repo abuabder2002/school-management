@@ -63,8 +63,13 @@ export const feeService = {
     return response.data;
   },
 
-  getPaymentsByStudent: async (studentId) => {
-    const response = await api.get(`/api/fees/student/${studentId}/payments`);
+  // Payment history for a student (newest first). fromDate/toDate (YYYY-MM-DD) narrow the range.
+  getPaymentsByStudent: async (studentId, fromDate = '', toDate = '') => {
+    const params = new URLSearchParams();
+    if (fromDate) params.set('fromDate', fromDate);
+    if (toDate) params.set('toDate', toDate);
+    const qs = params.toString();
+    const response = await api.get(`/api/fees/student/${studentId}/payments${qs ? `?${qs}` : ''}`);
     return response.data;
   },
 

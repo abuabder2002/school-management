@@ -502,6 +502,17 @@ public class FeeService {
     }
 
     public List<Payment> getPaymentsByStudent(Long studentId, Long schoolId) {
+        return getPaymentsByStudent(studentId, null, null, schoolId);
+    }
+
+    /** Same as above, optionally narrowed to an inclusive payment-date range (either end may be null). */
+    public List<Payment> getPaymentsByStudent(Long studentId, LocalDate fromDate, LocalDate toDate, Long schoolId) {
+        if (fromDate != null || toDate != null) {
+            return paymentRepository.findByStudentIdAndSchoolIdAndPaymentDateBetweenOrderByPaymentDateDesc(
+                    studentId, schoolId,
+                    fromDate != null ? fromDate : LocalDate.of(1900, 1, 1),
+                    toDate != null ? toDate : LocalDate.of(9999, 12, 31));
+        }
         return paymentRepository.findByStudentIdAndSchoolIdOrderByPaymentDateDesc(studentId, schoolId);
     }
 

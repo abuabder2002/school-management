@@ -19,4 +19,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // Inclusive date range, school-scoped — backs the Recent Payments date filter.
     Page<Payment> findBySchoolIdAndPaymentDateBetween(Long schoolId, LocalDate fromDate, LocalDate toDate, Pageable pageable);
+
+    // Inclusive date range, student- and school-scoped — backs the parent portal's Payment History filter.
+    List<Payment> findByStudentIdAndSchoolIdAndPaymentDateBetweenOrderByPaymentDateDesc(
+            Long studentId, Long schoolId, LocalDate fromDate, LocalDate toDate);
 }

@@ -22,6 +22,8 @@ import {
   Clock,
   ArrowRight,
   BookOpen,
+  CreditCard,
+  RotateCcw,
 } from 'lucide-react';
 
 const TABS = [
@@ -54,6 +56,10 @@ export const ParentDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [child, setChild] = useState(null);
   const [fees, setFees] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentsFromDate, setPaymentsFromDate] = useState('');
+  const [paymentsToDate, setPaymentsToDate] = useState('');
   const [marks, setMarks] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveReasons, setLeaveReasons] = useState([]);
@@ -75,6 +81,32 @@ export const ParentDashboard = () => {
       setLoading(false);
     }
   }, [studentId]);
+
+  // Payment history, with its own date filter — reloads whenever the student or the filter changes.
+  useEffect(() => {
+    if (!studentId) return;
+    loadPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, paymentsFromDate, paymentsToDate]);
+
+  const loadPayments = async () => {
+    try {
+      setLoadingPayments(true);
+      const res = await feeService.getPaymentsByStudent(studentId, paymentsFromDate, paymentsToDate);
+      if (res && res.success && Array.isArray(res.data)) {
+        setPayments(res.data);
+      } else if (Array.isArray(res)) {
+        setPayments(res);
+      } else {
+        setPayments([]);
+      }
+    } catch (err) {
+      console.error('Failed to load payment history:', err);
+      setPayments([]);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
 
   // 'overview' is always available (it's the home tab); fall back to it if the
   // current tab gets disabled by the admin.
@@ -632,6 +664,107 @@ export const ParentDashboard = () => {
                           {Number(fee.pendingAmount || 0) === 0 ? 'PAID' : Number(fee.paidAmount || 0) > 0 ? 'PARTIAL' : 'PENDING'}
                         </span>
                       </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History — last transaction + date-filterable transaction list */}
+      {activeTab === 'fees' && isEnabled('FEES') && (
+        <div className="card" style={{ marginTop: '1.25rem' }}>
+          <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CreditCard size={17} style={{ color: '#047857' }} />
+                Payment History
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                {payments.length > 0
+                  ? `Last transaction: ₹${Number(payments[0].amountPaid || 0).toLocaleString()} on ${formatDate(payments[0].paymentDate)}`
+                  : 'Every payment recorded against this student'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <input
+                type="date"
+                className="form-input"
+                value={paymentsFromDate}
+                max={paymentsToDate || undefined}
+                onChange={(e) => setPaymentsFromDate(e.target.value)}
+                title="From date"
+                style={{ height: '34px', fontSize: '0.8rem', padding: '0 0.5rem' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to</span>
+              <input
+                type="date"
+                className="form-input"
+                value={paymentsToDate}
+                min={paymentsFromDate || undefined}
+                onChange={(e) => setPaymentsToDate(e.target.value)}
+                title="To date"
+                style={{ height: '34px', fontSize: '0.8rem', padding: '0 0.5rem' }}
+              />
+              {(paymentsFromDate || paymentsToDate) && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => { setPaymentsFromDate(''); setPaymentsToDate(''); }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={loadPayments}
+                disabled={loadingPayments}
+                title="Refresh"
+              >
+                <RotateCcw size={13} className={loadingPayments ? 'animate-spin' : ''} />
+              </button>
+            </div>
+          </div>
+          <div className="table-container" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th style={{ textAlign: 'right' }}>Amount</th>
+                  <th style={{ textAlign: 'center' }}>Method</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingPayments ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 1.5rem' }}>
+                      Loading transactions...
+                    </td>
+                  </tr>
+                ) : payments.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem 1.5rem' }}>
+                      <CreditCard size={28} style={{ opacity: 0.35, display: 'block', margin: '0 auto 0.5rem' }} />
+                      {(paymentsFromDate || paymentsToDate) ? 'No transactions in this date range.' : 'No transactions recorded yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  payments.map((p, idx) => (
+                    <tr key={p.id || idx}>
+                      <td style={{ fontWeight: 600 }}>{formatDate(p.paymentDate)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#047857' }}>
+                        ₹{Number(p.amountPaid || 0).toLocaleString()}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-secondary" style={{ fontSize: '0.7rem' }}>
+                          {p.paymentMethod || 'ONLINE'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{p.note || '—'}</td>
                     </tr>
                   ))
                 )}
