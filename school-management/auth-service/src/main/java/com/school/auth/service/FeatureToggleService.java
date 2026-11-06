@@ -35,6 +35,7 @@ public class FeatureToggleService {
         parent.put("HOMEWORK", "Homework");
         parent.put("FEES", "Fees");
         parent.put("MARKS", "Marks");
+        parent.put("BOARD_RESULTS", "Board Results");
         parent.put("LEAVE", "Leave");
         parent.put("NOTIFICATIONS", "Notifications");
         MODULE_REGISTRY.put("PARENT", parent);

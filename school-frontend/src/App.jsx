@@ -150,7 +150,7 @@ export const App = () => {
                 <Route path="daily-schedule" element={<ModuleGate moduleKey="DAILY_SCHEDULE"><DailySchedulePage /></ModuleGate>} />
                 <Route path="vacancies" element={<ModuleGate moduleKey="VACANCIES"><VacanciesPage /></ModuleGate>} />
                 <Route path="subscription" element={<ModuleGate moduleKey="SUBSCRIPTION"><SubscriptionViewPage /></ModuleGate>} />
-                <Route path="board-results" element={<AdminBoardResultsPage />} />
+                <Route path="board-results" element={<ModuleGate moduleKey="BOARD_RESULTS"><AdminBoardResultsPage /></ModuleGate>} />
               </Route>
 
               {/* Teacher Protected Routes */}

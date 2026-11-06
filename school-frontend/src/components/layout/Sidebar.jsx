@@ -178,7 +178,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               </NavLink>
             )}
 
-            {(isModuleEnabled('STUDENTS') || isModuleEnabled('MARKS') || isModuleEnabled('DAILY_SCHEDULE')) && (
+            {(isModuleEnabled('STUDENTS') || isModuleEnabled('MARKS') || isModuleEnabled('DAILY_SCHEDULE') || isModuleEnabled('BOARD_RESULTS')) && (
               <NavGroup title="Academics" storageKey="academics" active={pathStartsWith('/admin/students', '/admin/marks', '/admin/daily-schedule', '/admin/board-results')}>
                 {isModuleEnabled('STUDENTS') && (
                   <NavLink to="/admin/students" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -190,9 +190,11 @@ export const Sidebar = ({ isOpen, onClose }) => {
                     <Award size={18} /><span>Marks</span>
                   </NavLink>
                 )}
-                <NavLink to="/admin/board-results" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                  <GraduationCap size={18} /><span>Board Results</span>
-                </NavLink>
+                {isModuleEnabled('BOARD_RESULTS') && (
+                  <NavLink to="/admin/board-results" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                    <GraduationCap size={18} /><span>Board Results</span>
+                  </NavLink>
+                )}
                 {isModuleEnabled('DAILY_SCHEDULE') && (
                   <NavLink to="/admin/daily-schedule" onClick={handleLinkClick} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
                     <CalendarClock size={18} /><span>Daily Schedule</span>

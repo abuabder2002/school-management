@@ -23,6 +23,8 @@ public class SchoolModuleToggleService {
     private final SchoolModuleToggleRepository toggleRepository;
 
     private static final Map<String, String> MODULE_REGISTRY = new LinkedHashMap<>();
+    /** Modules that default to OFF unless explicitly enabled by Super Admin. */
+    private static final java.util.Set<String> OPT_IN_MODULES = java.util.Set.of("BOARD_RESULTS");
     static {
         MODULE_REGISTRY.put("DASHBOARD", "Dashboard");
         MODULE_REGISTRY.put("NOTICE", "Notifications");
@@ -39,6 +41,7 @@ public class SchoolModuleToggleService {
         MODULE_REGISTRY.put("DAILY_SCHEDULE", "Daily Schedule");
         MODULE_REGISTRY.put("VACANCIES", "Vacancies");
         MODULE_REGISTRY.put("SUBSCRIPTION", "Subscription");
+        MODULE_REGISTRY.put("BOARD_RESULTS", "Board Results");
     }
 
     public static Map<String, String> registry() {
@@ -56,7 +59,7 @@ public class SchoolModuleToggleService {
                         .schoolId(schoolId)
                         .moduleKey(entry.getKey())
                         .label(entry.getValue())
-                        .enabled(storedByKey.getOrDefault(entry.getKey(), true))
+                        .enabled(storedByKey.getOrDefault(entry.getKey(), !OPT_IN_MODULES.contains(entry.getKey())))
                         .build())
                 .toList();
     }

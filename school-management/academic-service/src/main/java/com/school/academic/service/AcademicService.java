@@ -469,7 +469,13 @@ public class AcademicService {
     // ---- Board Results ----
 
     public List<BoardResultDTO> getAllBoardResults(Long schoolId) {
-        return boardResultRepository.findBySchoolIdOrderByCreatedAtDesc(schoolId).stream()
+        if (schoolId == null) {
+            return boardResultRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .map(this::toBoardResultDTO)
+                    .toList();
+        }
+        // Results entered by Super Admin carry no school and are visible to every school.
+        return boardResultRepository.findBySchoolIdOrSchoolIdIsNullOrderByCreatedAtDesc(schoolId).stream()
                 .map(this::toBoardResultDTO)
                 .toList();
     }
@@ -483,7 +489,6 @@ public class AcademicService {
 
     @Transactional
     public BoardResultDTO createBoardResult(BoardResultDTO dto, Long schoolId) {
-        requireSchoolId(schoolId);
         BoardResult result = BoardResult.builder()
                 .studentId(dto.getStudentId())
                 .admissionNumber(dto.getAdmissionNumber())
@@ -506,7 +511,9 @@ public class AcademicService {
 
     @Transactional
     public BoardResultDTO updateBoardResult(Long id, BoardResultDTO dto, Long schoolId) {
-        BoardResult existing = boardResultRepository.findByIdAndSchoolId(id, schoolId)
+        BoardResult existing = (schoolId == null
+                ? boardResultRepository.findById(id)
+                : boardResultRepository.findByIdAndSchoolId(id, schoolId))
                 .orElseThrow(() -> new ResourceNotFoundException("BoardResult", "id", id));
         existing.setBoard(dto.getBoard());
         existing.setStandard(dto.getStandard());
@@ -524,7 +531,10 @@ public class AcademicService {
     }
 
     public void deleteBoardResult(Long id, Long schoolId) {
-        if (boardResultRepository.findByIdAndSchoolId(id, schoolId).isEmpty()) {
+        boolean exists = schoolId == null
+                ? boardResultRepository.existsById(id)
+                : boardResultRepository.findByIdAndSchoolId(id, schoolId).isPresent();
+        if (!exists) {
             throw new ResourceNotFoundException("BoardResult", "id", id);
         }
         boardResultRepository.deleteById(id);

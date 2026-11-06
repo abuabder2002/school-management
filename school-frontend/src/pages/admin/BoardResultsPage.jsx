@@ -101,7 +101,7 @@ export const BoardResultsPage = () => {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
-                    {results.length === 0 ? 'No board results recorded yet for this school.' : 'No results match your search.'}
+                    {results.length === 0 ? 'No board results published yet.' : 'No results match your search.'}
                   </td>
                 </tr>
               ) : (

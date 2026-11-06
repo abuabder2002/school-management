@@ -1,7 +1,6 @@
 package com.school.academic.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,7 +21,6 @@ public class BoardResultDTO {
     // Super Admin "pick a student" flow, which has no school picker of its own.
     private Long schoolId;
 
-    @NotNull(message = "Student is required")
     private Long studentId;
 
     private String admissionNumber;

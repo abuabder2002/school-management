@@ -353,7 +353,18 @@ public class AcademicController {
     public ResponseEntity<ApiResponse<List<BoardResultDTO>>> getAllBoardResults(
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        verifyBoardResultRole(authHeader, false);
+        if (authHeader != null) {
+            String token = jwtDecoder.extractRaw(authHeader);
+            if (token == null || !jwtDecoder.isValidToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Missing or invalid authentication token."));
+            }
+            String role = normalizeRole(jwtDecoder.getRole(token));
+            if (!List.of("ADMIN", "TEACHER", "SUPER_ADMIN", "PARENT").contains(role)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("You are not authorized to view board results."));
+            }
+        }
         return ResponseEntity.ok(ApiResponse.success(academicService.getAllBoardResults(resolveSchoolId(authHeader, schoolIdParam))));
     }
 
