@@ -314,16 +314,16 @@ export const Sidebar = ({ isOpen, onClose }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minWidth: 0 }}>
           <div
             style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: '50%',
-              backgroundColor: '#312e81',
+              width: '34px',
+              height: '34px',
+              borderRadius: '11px',
+              backgroundColor: 'rgba(255,255,255,0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '0.8rem',
+              fontSize: '0.85rem',
               fontWeight: '700',
-              color: '#a5b4fc',
+              color: '#f4cb6a',
               flexShrink: 0,
             }}
           >

@@ -10,6 +10,7 @@ export const AppLayout = () => {
   return (
     <SchoolModulesProvider>
       <div className="app-shell">
+        <a href="#main-content" className="skip-link">Skip to content</a>
         {/* Mobile Backdrop Overlay */}
         <div
           className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
@@ -19,7 +20,7 @@ export const AppLayout = () => {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="main-content-wrapper">
           <Navbar onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
-          <main className="page-container">
+          <main id="main-content" className="page-container">
             <Suspense fallback={<div className="page-loading" style={{ padding: '2rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading...</div>}>
               <Outlet />
             </Suspense>

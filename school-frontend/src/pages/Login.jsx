@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Logo } from '../components/common/Logo';
-import { LogIn, KeyRound, IdCard, Eye, EyeOff } from 'lucide-react';
+import { LogIn, KeyRound, IdCard, Eye, EyeOff, CalendarCheck, Wallet, Users } from 'lucide-react';
 
 const DEMO_SHORTCUTS = {
   admin: { email: 'admin@school.com', password: 'Admin@123' },
@@ -81,37 +81,49 @@ export const Login = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'radial-gradient(circle at 20% -10%, #312e81 0%, #0f172a 45%, #020617 100%)',
-        padding: '1.5rem',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '440px',
-          background: '#ffffff',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: '0 30px 60px -15px rgba(2, 6, 23, 0.5)',
-          padding: '2.25rem',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-      >
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.9rem' }}>
-            <Logo size={56} />
+    <div className="auth-shell">
+      {/* Brand side: who this is and what it does (hidden on phones) */}
+      <aside className="auth-brand" aria-label="About EduCore">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <Logo size={44} />
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', fontWeight: 700, letterSpacing: '-0.02em' }}>EduCore</div>
+            <div style={{ fontSize: '0.75rem', color: '#8e9bbd', fontWeight: 500 }}>School Management System</div>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-            EduCore
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
-            One sign-in for admins, teachers and parents
+        </div>
+
+        <div>
+          <h2>Everything your school runs on, in one place.</h2>
+          <ul className="auth-points">
+            <li>
+              <span><CalendarCheck size={16} /></span>
+              <div><strong>Attendance and leave</strong>Daily records and leave requests, kept in step with the parent portal.</div>
+            </li>
+            <li>
+              <span><Wallet size={16} /></span>
+              <div><strong>Fees and billing</strong>Bills, payments and what is still outstanding, class by class.</div>
+            </li>
+            <li>
+              <span><Users size={16} /></span>
+              <div><strong>One sign-in for everyone</strong>Admins, teachers and parents each see only what they need.</div>
+            </li>
+          </ul>
+        </div>
+
+        <div style={{ fontSize: '0.78rem', color: '#7d8ab0' }}>&copy; {new Date().getFullYear()} EduCore</div>
+      </aside>
+
+      {/* Form side */}
+      <main className="auth-panel" id="main-content">
+        <div className="auth-card">
+        {/* Brand Header */}
+        <div style={{ marginBottom: '1.75rem' }}>
+          <div style={{ marginBottom: '1.1rem' }} className="auth-mobile-logo">
+            <Logo size={48} />
+          </div>
+          <h1 style={{ margin: 0 }}>Welcome back</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.4rem' }}>
+            Sign in with your email or mobile number to continue.
           </p>
         </div>
 
@@ -177,7 +189,7 @@ export const Login = () => {
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', padding: '0.7rem', fontWeight: 600, marginBottom: '1.25rem' }}
+            style={{ width: '100%', padding: '0.8rem', fontWeight: 650, marginBottom: '1.25rem' }}
             disabled={submitting}
           >
             <LogIn size={15} />
@@ -207,7 +219,8 @@ export const Login = () => {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

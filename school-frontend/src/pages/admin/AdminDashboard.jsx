@@ -28,6 +28,8 @@ import {
   Trash2,
   LayoutGrid,
   ChevronDown,
+  Wallet,
+  CalendarDays,
 } from 'lucide-react';
 
 const QUICK_ACTIONS = [
@@ -223,136 +225,118 @@ export const AdminDashboard = () => {
   };
 
   const adminName = user?.name || user?.username || 'Admin';
+  const inr = (n) => '\u20b9' + Number(n || 0).toLocaleString('en-IN');
+  const todayLabel = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const collectionRate = feeSummary.totalBilled > 0 ? (feeSummary.totalPaid / feeSummary.totalBilled) * 100 : 0;
 
   return (
     <div>
-      {/* Top Section: Welcome / School Overview */}
-      <div className="page-header" style={{ marginBottom: '1.25rem' }}>
-        <div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            {getGreeting()}, {adminName}
-          </h1>
-          <p className="page-subtitle" style={{ fontSize: '0.875rem' }}>
-            Here's what's happening across your school today.
-          </p>
+      {/* Hero: greeting, date and the everyday actions */}
+      <section className="hero">
+        <div className="hero-top">
+          <div>
+            <span className="hero-eyebrow">
+              <CalendarDays size={14} />
+              {todayLabel}
+            </span>
+            <h1 className="hero-title">
+              {getGreeting()}, {adminName}
+            </h1>
+            <p className="hero-sub">Here's what's happening across your school today.</p>
+          </div>
+          <div className="hero-actions">
+            <button
+              onClick={loadDashboardData}
+              disabled={loading}
+              className="btn btn-ghost-light btn-sm"
+              title="Refresh dashboard data"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+            <div style={{ position: 'relative' }} ref={quickActionsRef}>
+              <button
+                type="button"
+                className="btn btn-light btn-sm"
+                onClick={() => setQuickActionsOpen((v) => !v)}
+                aria-expanded={quickActionsOpen}
+                aria-haspopup="menu"
+              >
+                <LayoutGrid size={14} />
+                <span>Quick actions</span>
+                <ChevronDown size={13} style={{ transform: quickActionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
+              {quickActionsOpen && (
+                <div className="menu-pop" role="menu">
+                  {QUICK_ACTIONS.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link key={action.to} to={action.to} role="menuitem" onClick={() => setQuickActionsOpen(false)}>
+                        <Icon size={16} color={action.color} />
+                        {action.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleClearAllData}
+              disabled={clearingData}
+              className="btn btn-danger-quiet btn-sm"
+              title="Permanently delete every student record"
+            >
+              <Trash2 size={13} />
+              <span>{clearingData ? 'Clearing...' : 'Clear data'}</span>
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Last updated: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
-          <button
-            onClick={loadDashboardData}
-            disabled={loading}
-            className="btn btn-secondary btn-sm"
-            title="Refresh dashboard data"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleClearAllData}
-            disabled={clearingData}
-            className="btn btn-danger btn-sm"
-            title="Permanently delete every student record"
-          >
-            <Trash2 size={13} />
-            <span>{clearingData ? 'Clearing...' : 'Clear Data'}</span>
-          </button>
-        </div>
-      </div>
+      </section>
 
-      {/* Compact Metric Cards (Clean, uniform, enterprise design) */}
-      <div className="stat-grid" style={{ marginBottom: '1.5rem' }}>
+      {/* Key figures */}
+      <div className="stat-grid">
         <div className="stat-card">
           <div>
             <div className="stat-label">Students</div>
-            <div className="stat-value">{loading ? '—' : stats.studentsCount}</div>
-            <div className="stat-subtext">Total active enrolled students</div>
+            <div className="stat-value">{loading ? '\u2014' : stats.studentsCount.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext">Active enrolled students</div>
           </div>
-          <div className="stat-icon indigo">
-            <Users size={20} />
-          </div>
+          <div className="stat-icon indigo"><Users size={20} /></div>
         </div>
 
         <div className="stat-card">
           <div>
-            <div className="stat-label">Leave Records</div>
-            <div className="stat-value">{loading ? '—' : stats.pendingLeaves}</div>
-            <div className="stat-subtext">Recorded parent leaves</div>
+            <div className="stat-label">Leave records</div>
+            <div className="stat-value">{loading ? '\u2014' : stats.pendingLeaves.toLocaleString('en-IN')}</div>
+            <div className="stat-subtext">Student and staff leaves on record</div>
           </div>
-          <div className="stat-icon rose">
-            <FileText size={20} />
+          <div className="stat-icon amber"><FileText size={20} /></div>
+        </div>
+
+        <div className="stat-card">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="stat-label">Fees collected</div>
+            <div className="stat-value" style={{ color: '#15803d' }}>{loading ? '\u2014' : inr(feeSummary.totalPaid)}</div>
+            <div className="stat-subtext">{loading ? '' : `${collectionRate.toFixed(1)}% of ${inr(feeSummary.totalBilled)} billed`}</div>
+            <div className="stat-trend" aria-hidden="true"><span style={{ width: `${Math.min(100, collectionRate)}%` }} /></div>
           </div>
+          <div className="stat-icon emerald"><Wallet size={20} /></div>
+        </div>
+
+        <div className="stat-card">
+          <div>
+            <div className="stat-label">Outstanding</div>
+            <div className="stat-value" style={{ color: feeSummary.totalOutstanding > 0 ? '#c0392b' : 'var(--text-main)' }}>
+              {loading ? '\u2014' : inr(feeSummary.totalOutstanding)}
+            </div>
+            <div className="stat-subtext">Still to be collected</div>
+          </div>
+          <div className="stat-icon rose"><AlertCircle size={20} /></div>
         </div>
       </div>
 
-      {/* Quick Actions Menu */}
-      <div style={{ marginBottom: '1.75rem', position: 'relative' }} ref={quickActionsRef}>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setQuickActionsOpen((v) => !v)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <LayoutGrid size={16} />
-          <span>Quick Actions</span>
-          <ChevronDown size={14} style={{ transform: quickActionsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-        </button>
-
-        {quickActionsOpen && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 0.5rem)',
-              left: 0,
-              zIndex: 20,
-              minWidth: '220px',
-              background: '#ffffff',
-              border: '1px solid var(--border-subtle, #e2e8f0)',
-              borderRadius: 'var(--radius-md, 6px)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-              overflow: 'hidden',
-            }}
-          >
-            {QUICK_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.to}
-                  to={action.to}
-                  onClick={() => setQuickActionsOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.65rem',
-                    padding: '0.7rem 1rem',
-                    textDecoration: 'none',
-                    color: 'var(--text-main)',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    transition: 'var(--transition)',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-main, #f8fafc)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <Icon size={16} color={action.color} />
-                  {action.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Main Grid: Upcoming / Important */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '1.25rem',
-          alignItems: 'start',
-        }}
-      >
+      <div className="dash-grid">
         {/* Upcoming Examinations */}
         <div className="card">
           <div className="card-header">
@@ -412,25 +396,28 @@ export const AdminDashboard = () => {
               Billing
             </Link>
           </div>
-          <div style={{ padding: '1rem 1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
-              <div style={{ padding: '0.65rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)' }}>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 500 }}>Collected</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)' }}>
-                  ₹{feeSummary.totalPaid.toLocaleString()}
-                </div>
-              </div>
-              <div style={{ padding: '0.65rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)' }}>
-                <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 500 }}>Outstanding</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: feeSummary.totalOutstanding > 0 ? 'var(--danger)' : 'var(--text-main)' }}>
-                  ₹{feeSummary.totalOutstanding.toLocaleString()}
-                </div>
-              </div>
+          <div style={{ padding: '1.15rem 1.35rem 1.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }}>Collection rate</span>
+              <span className="num" style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 700, color: '#15803d' }}>
+                {collectionRate.toFixed(1)}%
+              </span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-              <span>Total Invoiced</span>
-              <strong>₹{feeSummary.totalBilled.toLocaleString()}</strong>
+            <div className="meter" role="img" aria-label={`${collectionRate.toFixed(1)} percent of billed fees collected`}>
+              <span style={{ width: `${Math.min(100, collectionRate)}%` }} />
             </div>
+            <dl style={{ marginTop: '1.1rem', display: 'grid', gap: '0.55rem', fontSize: '0.85rem' }}>
+              {[
+                ['Total invoiced', feeSummary.totalBilled, 'var(--text-main)'],
+                ['Collected', feeSummary.totalPaid, '#15803d'],
+                ['Outstanding', feeSummary.totalOutstanding, feeSummary.totalOutstanding > 0 ? '#c0392b' : 'var(--text-main)'],
+              ].map(([label, value, color]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <dt style={{ color: 'var(--text-muted)' }}>{label}</dt>
+                  <dd className="num" style={{ fontWeight: 700, color }}>{inr(value)}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         </div>
 
