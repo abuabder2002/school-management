@@ -188,7 +188,7 @@ export const FeesPage = () => {
     try {
       setLoadingRecentPayments(true);
       const hasDateFilter = Boolean(paymentsFromDate || paymentsToDate);
-      const res = await feeService.getRecentPayments(hasDateFilter ? 500 : 10, paymentsFromDate, paymentsToDate);
+      const res = await feeService.getRecentPayments(hasDateFilter ? RECENT_PAYMENTS_RANGE_LIMIT : 10, paymentsFromDate, paymentsToDate);
       if (res && res.success && Array.isArray(res.data)) {
         setRecentPayments(res.data);
       } else if (Array.isArray(res)) {
@@ -279,6 +279,70 @@ export const FeesPage = () => {
       maximumFractionDigits: 2,
     });
   };
+
+  // ---- Recent Payments: collection summary for the selected date range ----
+  const RECENT_PAYMENTS_RANGE_LIMIT = 500; // must match the limit sent by loadRecentPayments for a date range
+  const toLocalISO = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const applyPaymentsPreset = (key) => {
+    const today = new Date();
+    const start = new Date(today);
+    if (key === 'week') start.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Monday
+    else if (key === 'month') start.setDate(1);
+    else if (key === '30d') start.setDate(today.getDate() - 29);
+    else if (key === 'year') { start.setMonth(0); start.setDate(1); }
+    setPaymentsFromDate(toLocalISO(start));
+    setPaymentsToDate(toLocalISO(today));
+  };
+
+  const paymentSummary = useMemo(() => {
+    if (!paymentsFromDate && !paymentsToDate) return null;
+    const rows = recentPayments;
+    const students = new Set();
+    const byMethod = {};
+    const byDay = {};
+    const byClass = {};
+    let total = 0;
+    let highest = null;
+    let minDate = null;
+    let maxDate = null;
+    rows.forEach((p) => {
+      const amt = Number(p.amountPaid || 0);
+      total += amt;
+      students.add(p.studentId);
+      const method = (p.paymentMethod || 'ONLINE').toUpperCase();
+      byMethod[method] = byMethod[method] || { amount: 0, count: 0 };
+      byMethod[method].amount += amt;
+      byMethod[method].count += 1;
+      if (p.paymentDate) {
+        byDay[p.paymentDate] = (byDay[p.paymentDate] || 0) + amt;
+        if (!minDate || p.paymentDate < minDate) minDate = p.paymentDate;
+        if (!maxDate || p.paymentDate > maxDate) maxDate = p.paymentDate;
+      }
+      const cls = p.className && p.className !== '-' ? p.className : 'Unknown';
+      byClass[cls] = (byClass[cls] || 0) + amt;
+      if (!highest || amt > highest.amount) highest = { amount: amt, name: p.studentName };
+    });
+    const top = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1])[0] || null;
+    const from = paymentsFromDate || minDate;
+    const to = paymentsToDate || maxDate;
+    const days = from && to
+      ? Math.max(1, Math.round((new Date(to + 'T00:00:00') - new Date(from + 'T00:00:00')) / 86400000) + 1)
+      : 1;
+    return {
+      total,
+      count: rows.length,
+      studentCount: students.size,
+      average: rows.length ? total / rows.length : 0,
+      highest,
+      days,
+      perDay: total / days,
+      bestDay: top(byDay),
+      topClass: top(byClass),
+      methods: Object.entries(byMethod).sort((a, b) => b[1].amount - a[1].amount),
+      truncated: rows.length >= RECENT_PAYMENTS_RANGE_LIMIT,
+    };
+  }, [recentPayments, paymentsFromDate, paymentsToDate]);
 
   // Format Date
   const formatDate = (dateStr) => {
@@ -1305,6 +1369,79 @@ export const FeesPage = () => {
                   <RotateCcw size={12} className={loadingRecentPayments ? 'animate-spin' : ''} />
                 </button>
               </div>
+            </div>
+
+            {/* Quick ranges + collection summary for the selected dates */}
+            <div style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border-subtle)', backgroundColor: '#fbfdfc' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>Quick range:</span>
+                {[['week', 'This week'], ['month', 'This month'], ['30d', 'Last 30 days'], ['year', 'This year']].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
+                    onClick={() => applyPaymentsPreset(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {!paymentSummary ? (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Pick a "from" and "to" date (or a quick range) to see how much was collected in that period.
+                </div>
+              ) : loadingRecentPayments ? null : (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.6rem' }}>
+                    {[
+                      { label: 'Total collected', value: formatCurrency(paymentSummary.total), sub: `${paymentSummary.days} day${paymentSummary.days === 1 ? '' : 's'} in range`, strong: true },
+                      { label: 'Payments received', value: paymentSummary.count.toLocaleString('en-IN'), sub: `from ${paymentSummary.studentCount.toLocaleString('en-IN')} student${paymentSummary.studentCount === 1 ? '' : 's'}` },
+                      { label: 'Average payment', value: formatCurrency(paymentSummary.average), sub: 'per transaction' },
+                      { label: 'Average per day', value: formatCurrency(paymentSummary.perDay), sub: 'across the whole range' },
+                      { label: 'Highest payment', value: paymentSummary.highest ? formatCurrency(paymentSummary.highest.amount) : '—', sub: paymentSummary.highest?.name || '' },
+                      { label: 'Best collection day', value: paymentSummary.bestDay ? formatCurrency(paymentSummary.bestDay[1]) : '—', sub: paymentSummary.bestDay ? formatDate(paymentSummary.bestDay[0]) : '' },
+                      { label: 'Top class', value: paymentSummary.topClass ? paymentSummary.topClass[0] : '—', sub: paymentSummary.topClass ? formatCurrency(paymentSummary.topClass[1]) : '' },
+                    ].map((c) => (
+                      <div
+                        key={c.label}
+                        style={{
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: '6px',
+                          padding: '0.55rem 0.75rem',
+                          backgroundColor: c.strong ? '#ecfdf5' : '#ffffff',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.03em', color: 'var(--text-muted)' }}>{c.label}</div>
+                        <div style={{ fontSize: c.strong ? '1.2rem' : '1.05rem', fontWeight: 700, color: c.strong ? '#047857' : 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{c.value}</div>
+                        {c.sub ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.sub}</div> : null}
+                      </div>
+                    ))}
+                  </div>
+
+                  {paymentSummary.methods.length > 0 && (
+                    <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>By method:</span>
+                      {paymentSummary.methods.map(([method, m]) => (
+                        <span
+                          key={method}
+                          style={{ fontSize: '0.78rem', padding: '0.2rem 0.55rem', borderRadius: '999px', backgroundColor: '#e0f2fe', color: '#0369a1', fontWeight: 600 }}
+                        >
+                          {method}: {formatCurrency(m.amount)} · {m.count} payment{m.count === 1 ? '' : 's'}
+                          {paymentSummary.total > 0 ? ` · ${Math.round((m.amount / paymentSummary.total) * 100)}%` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {paymentSummary.truncated && (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#b45309' }}>
+                      This range has more than {RECENT_PAYMENTS_RANGE_LIMIT} payments, so only the latest {RECENT_PAYMENTS_RANGE_LIMIT} are counted. Narrow the dates for exact totals.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="table-responsive">
