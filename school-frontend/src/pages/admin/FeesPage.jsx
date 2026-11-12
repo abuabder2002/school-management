@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { feeService } from '../../services/feeService';
 import { studentService } from '../../services/studentService';
 import { useToast } from '../../context/ToastContext';
@@ -86,6 +86,8 @@ export const FeesPage = () => {
 
   // Record Payment Modal
   const [paymentModal, setPaymentModal] = useState(false);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const paymentInFlight = useRef(false);
   const [selectedFeeForPayment, setSelectedFeeForPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({
     amountPaid: 0,
@@ -535,10 +537,15 @@ export const FeesPage = () => {
 
   const handleRecordPaymentSubmit = async (e) => {
     e.preventDefault();
+    // One submission at a time. The ref blocks a second click in the same instant (before React re-renders the disabled
+    // button), the state locks the button on screen. On a slow connection every extra click used to record the payment again.
+    if (paymentInFlight.current) return;
     if (!selectedFeeForPayment?.feeId) {
       addToast('Please save billing for this student before recording a payment.', 'error');
       return;
     }
+    paymentInFlight.current = true;
+    setPaymentSubmitting(true);
     try {
       await feeService.recordPayment(selectedFeeForPayment.feeId, {
         amountPaid: parseFloat(paymentForm.amountPaid),
@@ -552,7 +559,18 @@ export const FeesPage = () => {
       loadStudentBillingForClass(selectedClass);
       loadRecentPayments();
     } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to record payment.', 'error');
+      const message = err.response?.data?.message || 'Failed to record payment.';
+      addToast(message, 'error');
+      if (/already recorded/i.test(message)) {
+        // The server saw this exact payment a moment ago: show what is really saved instead of leaving a stale form.
+        setPaymentModal(false);
+        setSelectedFeeForPayment(null);
+        loadStudentBillingForClass(selectedClass);
+        loadRecentPayments();
+      }
+    } finally {
+      paymentInFlight.current = false;
+      setPaymentSubmitting(false);
     }
   };
 
@@ -2019,15 +2037,21 @@ export const FeesPage = () => {
       {/* Record Payment Modal */}
       <Modal
         isOpen={paymentModal}
-        onClose={() => setPaymentModal(false)}
+        onClose={() => { if (!paymentSubmitting) setPaymentModal(false); }}
         title="Record Payment"
         footer={
           <>
-            <button type="button" className="btn btn-secondary" onClick={() => setPaymentModal(false)}>
+            <button type="button" className="btn btn-secondary" disabled={paymentSubmitting} onClick={() => setPaymentModal(false)}>
               Cancel
             </button>
-            <button type="submit" form="recordPaymentForm" className="btn btn-primary">
-              Save Payment
+            <button
+              type="submit"
+              form="recordPaymentForm"
+              className="btn btn-primary"
+              disabled={paymentSubmitting}
+              style={paymentSubmitting ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+            >
+              {paymentSubmitting ? 'Saving…' : 'Save Payment'}
             </button>
           </>
         }

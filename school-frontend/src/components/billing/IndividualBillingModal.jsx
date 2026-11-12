@@ -34,6 +34,7 @@ export const IndividualBillingModal = ({
   const [academicYear, setAcademicYear] = usePersistedState('draft:bill-academicYear', '2026-2027');
   const [loadingExisting, setLoadingExisting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false); // blocks a second submit in the same instant, before the button re-renders disabled
   const skipInitialLoadRef = useRef(isOpen);
 
   const { addToast } = useToast();
@@ -224,6 +225,7 @@ export const IndividualBillingModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
 
     const targetStudentId = isEditMode
       ? (initialStudent.studentId || initialStudent.id)
@@ -239,6 +241,7 @@ export const IndividualBillingModal = ({
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const studentClass = currentStudent?.className || selectedClass || 'Class 10';
@@ -281,6 +284,7 @@ export const IndividualBillingModal = ({
         err.response?.data?.message || err.message || 'Failed to save billing record.';
       addToast(errorMsg, 'error');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
