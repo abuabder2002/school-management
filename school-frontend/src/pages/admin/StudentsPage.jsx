@@ -180,21 +180,13 @@ export const StudentsPage = () => {
       }, 250);
       return () => clearTimeout(timer);
     }
-  }, [classSearch, selectedClass, view]);
+  }, [classSearch, selectedClass, view, statusFilter, sectionFilter]);
 
   // Multi-field search across: Student Name, Admission/Roll Number, Father/Mother/Guardian Mobile
   // Strictly restricted to selectedClass and filtered by status & section
   const filteredStudents = useMemo(() => {
+    // status and section were already applied by the server (see loadStudentsForClass)
     let list = students;
-    if (statusFilter === 'ACTIVE') {
-      list = list.filter((s) => s.isActive !== false);
-    } else if (statusFilter === 'INACTIVE') {
-      list = list.filter((s) => s.isActive === false);
-    }
-
-    if (sectionFilter !== 'ALL') {
-      list = list.filter((s) => (s.section || '').trim().toUpperCase() === sectionFilter.toUpperCase());
-    }
 
     if (!classSearch || !classSearch.trim()) {
       return [...list].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
@@ -264,6 +256,7 @@ export const StudentsPage = () => {
       const res = await studentService.getAllStudents({
         search: trimmedQuery || undefined,
         className: masterClassFilter || undefined,
+        section: masterSectionFilter.trim() || undefined,
         page,
         pageSize: 50,
       });
@@ -290,9 +283,7 @@ export const StudentsPage = () => {
     const hasQuery = masterSearch && masterSearch.trim();
     if (!hasQuery && !masterClassFilter) return [];
 
-    const bySection = masterSectionFilter.trim()
-      ? masterStudents.filter((s) => (s.section || '').toLowerCase() === masterSectionFilter.trim().toLowerCase())
-      : masterStudents;
+    const bySection = masterStudents; // the section filter is applied by the server
 
     if (!hasQuery) return bySection;
 
@@ -368,12 +359,21 @@ export const StudentsPage = () => {
   };
 
   // Load students for a selected class with optional search and pagination
-  const loadStudentsForClass = async (className, searchParam = '', page = 1) => {
+  const loadStudentsForClass = async (
+    className,
+    searchParam = '',
+    page = 1,
+    filters = { status: statusFilter, section: sectionFilter },
+  ) => {
     try {
       setLoadingStudents(true);
+      // Status and section are filtered by the SERVER, before paging, so every page and the total reflect them
+      // (filtering the 20 rows of the current page in the browser hid students and left the pager wrong).
       const res = await studentService.getAllStudents({
         className: className,
         search: searchParam,
+        status: filters.status === 'ACTIVE' ? 'Active' : filters.status === 'INACTIVE' ? 'Inactive' : undefined,
+        section: filters.section && filters.section !== 'ALL' ? filters.section : undefined,
         page,
         pageSize: pagination.pageSize || 20,
       });
@@ -401,8 +401,9 @@ export const StudentsPage = () => {
     setSelectedClass(className);
     setClassSearch('');
     setSectionFilter('ALL');
+    setStatusFilter('ALL');
     setView('class-details');
-    loadStudentsForClass(className, '', 1);
+    loadStudentsForClass(className, '', 1, { status: 'ALL', section: 'ALL' });
     loadSectionsForClass(className);
   };
 
