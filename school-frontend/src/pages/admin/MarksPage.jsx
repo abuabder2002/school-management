@@ -830,7 +830,7 @@ export const MarksPage = () => {
         </div>
 
         {/* Tab Navigation Buttons */}
-        <div style={{ display: 'flex', gap: '0.35rem', background: 'var(--bg-subtle)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', maxWidth: '100%', gap: '0.35rem', background: 'var(--bg-subtle)', padding: '0.25rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
           <button
             type="button"
             className={`btn btn-sm ${activeTab === 'entry' ? 'btn-primary' : 'btn-outline'}`}
@@ -1534,7 +1534,7 @@ export const MarksPage = () => {
       {/* TAB 4: SUBJECTS & EXAMS (Admin only) */}
       {/* ========================================================================= */}
       {activeTab === 'config' && isAdmin && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: '1.5rem' }}>
           {/* Exams Card */}
           <div className="card">
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

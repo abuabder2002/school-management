@@ -156,7 +156,9 @@ p, span, div, label, input, button, select, textarea {
 .app-shell {
   display: flex;
   min-height: 100vh;
-  width: 100vw;
+  /* 100%, not 100vw: vw counts the page scrollbar, which made the whole app ~17px wider than the window on
+     Windows browsers (sideways scrolling, right edge incl. Logout cut off). */
+  width: 100%;
   background-color: var(--bg-main);
   position: relative;
 }
@@ -290,7 +292,7 @@ p, span, div, label, input, button, select, textarea {
   flex-direction: column;
   min-height: 100vh;
   background-color: var(--bg-main);
-  width: calc(100vw - 264px);
+  min-width: 0; /* lets wide tables scroll inside their own box instead of stretching the page */
 }
 
 /* Sidebar Backdrop on Mobile */
@@ -671,6 +673,13 @@ p, span, div, label, input, button, select, textarea {
   box-shadow: var(--shadow-sm);
 }
 
+/* several pages wrap their tables in .table-responsive: wide tables scroll inside it instead of stretching the page */
+.table-responsive {
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -975,7 +984,7 @@ p, span, div, label, input, button, select, textarea {
 
   .main-content-wrapper {
     margin-left: 0;
-    width: 100vw;
+    width: 100%;
   }
 
   .top-navbar {
@@ -993,6 +1002,15 @@ p, span, div, label, input, button, select, textarea {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  /* header action rows (counts, Refresh, Add ...) wrap onto a second line instead of pushing the page wider than the phone */
+  .page-header > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .page-header > div[style*="display: flex"] {
+    flex-wrap: wrap;
   }
 }
 
