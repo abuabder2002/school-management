@@ -384,12 +384,14 @@ p, span, div, label, input, button, select, textarea {
 }
 
 /* Each page eases in once when you open it (transform + opacity only). */
-/* Kept very short on purpose: content must never feel like it is waiting to appear. */
+/* NO entrance animation on the page content. An element with an opacity/transform animation becomes its own
+   stacking layer, and every popup (position: fixed) rendered inside the page is then trapped UNDER the sticky top bar
+   and the sidebar (this broke the Modules popup and every modal after the UI refresh). rise-in is only used on small
+   self-contained pieces (menus) that never contain a popup. */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
-.page-container > * { animation: rise-in 0.16s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -1029,9 +1031,10 @@ p, span, div, label, input, button, select, textarea {
 /* ==========================================================================
    Dashboard hero, meters and auth screen
    ========================================================================== */
+/* No overflow:hidden here: it clipped the Quick actions menu. The background paints inside the rounded
+   corners by itself, and the texture layer below rounds its own corners. */
 .hero {
   position: relative;
-  overflow: hidden;
   border-radius: var(--radius-lg);
   padding: 1.75rem 2rem;
   margin-bottom: 1.5rem;
@@ -1048,6 +1051,7 @@ p, span, div, label, input, button, select, textarea {
   content: '';
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 34px);
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
@@ -1109,7 +1113,7 @@ p, span, div, label, input, button, select, textarea {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: 0.35rem;
-  animation: rise-in 0.18s ease both;
+  animation: rise-in 0.18s ease backwards;
 }
 
 .menu-pop a {
