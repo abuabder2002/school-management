@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { academicService } from '../../services/academicService';
+import { schoolService } from '../../services/schoolService';
 import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Award, Plus, Trash2, Edit2, Save, RefreshCw } from 'lucide-react';
@@ -17,6 +18,7 @@ const defaultAcademicYear = () => {
 };
 
 const emptyForm = () => ({
+  schoolId: '', // '' = shown to all schools
   studentName: '',
   board: 'STATE_BOARD',
   standard: 'X',
@@ -31,11 +33,14 @@ const emptyForm = () => ({
 
 /**
  * Super Admin's Board Result entry. Student name is typed freely — no search/select step —
- * so results can also be entered for students who don't have an account yet. School is chosen
- * from a picker. studentId is omitted intentionally; it's optional in the backend.
+ * so results can also be entered for students who don't have an account yet. "Show to" picks
+ * which school's Admin/Parents see the result — one school, or all schools (schoolId null).
+ * studentId is omitted intentionally; it's optional in the backend.
  */
 export const BoardResultsPage = () => {
   const [results, setResults] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [filterSchool, setFilterSchool] = useState(''); // '' = every result
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -46,8 +51,29 @@ export const BoardResultsPage = () => {
 
   useEffect(() => {
     loadResults();
+    loadSchools();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadSchools = async () => {
+    try {
+      const res = await schoolService.listSchools();
+      if (res.success && res.data) setSchools(res.data);
+    } catch {
+      addToast('Failed to load schools', 'error');
+    }
+  };
+
+  const schoolLabel = (id) => {
+    if (id === null || id === undefined || id === '') return 'All schools';
+    return schools.find((s) => String(s.id) === String(id))?.name || `School #${id}`;
+  };
+
+  // What a school's Admin and Parents see: its own results plus the "all schools" ones.
+  const visibleResults = useMemo(() => {
+    if (!filterSchool) return results;
+    return results.filter((r) => r.schoolId === null || r.schoolId === undefined || String(r.schoolId) === filterSchool);
+  }, [results, filterSchool]);
 
   const loadResults = async () => {
     try {
@@ -117,6 +143,7 @@ export const BoardResultsPage = () => {
   const openEdit = (result) => {
     setEditingId(result.id);
     setForm({
+      schoolId: result.schoolId === null || result.schoolId === undefined ? '' : String(result.schoolId),
       studentName: result.studentName || '',
       board: result.board,
       standard: result.standard,
@@ -157,7 +184,9 @@ export const BoardResultsPage = () => {
       addToast('Add at least one subject with marks', 'warning');
       return;
     }
+    const targetSchoolId = form.schoolId === '' ? null : Number(form.schoolId);
     const payload = {
+      schoolId: targetSchoolId,
       studentName: form.studentName.trim(),
       board: form.board,
       standard: form.standard,
@@ -175,7 +204,7 @@ export const BoardResultsPage = () => {
         await academicService.updateBoardResult(editingId, payload);
         addToast('Board result updated', 'success');
       } else {
-        await academicService.createBoardResult(payload);
+        await academicService.createBoardResult(payload, targetSchoolId);
         addToast('Board result saved', 'success');
       }
       setForm(emptyForm());
@@ -196,7 +225,7 @@ export const BoardResultsPage = () => {
       <div className="page-header" style={{ marginBottom: '1.25rem' }}>
         <div>
           <h1 className="page-title">Add Student — Board Result</h1>
-          <p className="page-subtitle">Record Class X / XII board exam results for any school, subject by subject.</p>
+          <p className="page-subtitle">Record Class X / XII board exam results subject by subject, and choose which school shows each one.</p>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={loadResults} disabled={loading}>
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
@@ -212,6 +241,30 @@ export const BoardResultsPage = () => {
         </div>
         <div className="card-body">
           <form onSubmit={handleSubmit}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
+              Visibility
+            </div>
+            <div className="form-group" style={{ margin: '0 0 1.25rem', maxWidth: '420px' }}>
+              <label className="form-label" htmlFor="board-result-school">Show to *</label>
+              <select
+                id="board-result-school"
+                className="form-select"
+                value={form.schoolId}
+                onChange={(e) => setForm({ ...form, schoolId: e.target.value })}
+              >
+                <option value="">All schools</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={String(s.id)}>{s.name}</option>
+                ))}
+                {form.schoolId !== '' && !schools.some((s) => String(s.id) === form.schoolId) && (
+                  <option value={form.schoolId}>School #{form.schoolId} (not in school list)</option>
+                )}
+              </select>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                That school's Admin and Parents will see this result. The school also needs the Board Results module switched on in its Modules.
+              </div>
+            </div>
+
             <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.6rem' }}>
               Student
             </div>
@@ -391,9 +444,23 @@ export const BoardResultsPage = () => {
       </div>
 
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3 className="card-title">Saved Results</h3>
-          <span className="badge badge-secondary">{results.length} Result{results.length !== 1 ? 's' : ''}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <select
+              className="form-select"
+              aria-label="Filter by school"
+              style={{ minWidth: '180px', maxWidth: '100%' }}
+              value={filterSchool}
+              onChange={(e) => setFilterSchool(e.target.value)}
+            >
+              <option value="">All results</option>
+              {schools.map((s) => (
+                <option key={s.id} value={String(s.id)}>Seen by: {s.name}</option>
+              ))}
+            </select>
+            <span className="badge badge-secondary">{visibleResults.length} Result{visibleResults.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
         <div className="table-container">
           <table className="table">
@@ -401,17 +468,20 @@ export const BoardResultsPage = () => {
               <tr>
                 <th>S.No</th>
                 <th>Student Name</th>
+                <th>Shown to</th>
                 <th>Total</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>Loading...</td></tr>
-              ) : results.length === 0 ? (
-                <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>No board results recorded yet.</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>Loading...</td></tr>
+              ) : visibleResults.length === 0 ? (
+                <tr><td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                  {results.length === 0 ? 'No board results recorded yet.' : 'No results are shown to that school yet.'}
+                </td></tr>
               ) : (
-                results.map((r, idx) => (
+                visibleResults.map((r, idx) => (
                   <tr key={r.id}>
                     <td>{idx + 1}</td>
                     <td>
@@ -428,6 +498,11 @@ export const BoardResultsPage = () => {
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <span className={r.schoolId === null || r.schoolId === undefined ? 'badge badge-secondary' : 'badge badge-primary'}>
+                        {schoolLabel(r.schoolId)}
+                      </span>
                     </td>
                     <td style={{ fontWeight: 700 }}>{r.totalMarks}</td>
                     <td style={{ textAlign: 'right' }}>
