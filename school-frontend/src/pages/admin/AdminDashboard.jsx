@@ -7,6 +7,7 @@ import { academicService } from '../../services/academicService';
 import { leaveService } from '../../services/leaveService';
 import { feeService } from '../../services/feeService';
 import { authService } from '../../services/authService';
+import { schoolDataService } from '../../services/schoolDataService';
 import { Modal } from '../../components/common/Modal';
 import {
   Users,
@@ -67,6 +68,14 @@ export const AdminDashboard = () => {
   const [showAllBirthdays, setShowAllBirthdays] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clearingData, setClearingData] = useState(false);
+  // "Clear data" dialog: step 'backup' (offer a backup) -> 'confirm' (type DELETE) -> 'done' (what was deleted)
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearStep, setClearStep] = useState('backup');
+  const [clearSummary, setClearSummary] = useState(null); // { counts: { Students: 12, ... }, total }
+  const [loadingClearSummary, setLoadingClearSummary] = useState(false);
+  const [backupState, setBackupState] = useState('idle'); // idle | downloading | done
+  const [confirmText, setConfirmText] = useState('');
+  const [clearResult, setClearResult] = useState(null); // { deleted: {...}, total }
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const quickActionsRef = useRef(null);
 
@@ -195,30 +204,70 @@ export const AdminDashboard = () => {
     }
   };
 
-  // Permanently deletes every student record in the school. No undo.
-  const handleClearAllData = async () => {
-    if (stats.studentsCount === 0) {
-      addToast('There are no students to clear.', 'info');
-      return;
+  // ---- Clear data: back up first (optional), then delete every record of the school. No undo. ----
+  const nonZero = (counts) => Object.entries(counts || {}).filter(([, n]) => n > 0);
+
+  const loadClearSummary = async () => {
+    try {
+      setLoadingClearSummary(true);
+      const res = await schoolDataService.getSummary();
+      setClearSummary(res?.data || { counts: {}, total: 0 });
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Could not check what data the school has', 'error');
+      setClearSummary(null);
+    } finally {
+      setLoadingClearSummary(false);
     }
-    const firstConfirm = window.confirm(
-      `Are you sure you want to clear ALL student data? This will permanently delete all ${stats.studentsCount} student records across every class.`
-    );
-    if (!firstConfirm) return;
+  };
 
-    const secondConfirm = window.confirm(
-      `This cannot be undone. ${stats.studentsCount} student records will be permanently removed right now. Click OK to proceed.`
-    );
-    if (!secondConfirm) return;
+  const openClearData = () => {
+    setClearStep('backup');
+    setBackupState('idle');
+    setConfirmText('');
+    setClearResult(null);
+    setClearSummary(null);
+    setClearOpen(true);
+    loadClearSummary();
+  };
 
+  const closeClearData = () => {
+    if (clearingData || backupState === 'downloading') return;
+    setClearOpen(false);
+  };
+
+  const handleDownloadBackup = async () => {
+    try {
+      setBackupState('downloading');
+      const blob = await schoolDataService.downloadBackup();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `school-backup-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setBackupState('done');
+      addToast('Backup downloaded. Check your Downloads folder.', 'success');
+    } catch (err) {
+      setBackupState('idle');
+      addToast('Could not create the backup. Nothing has been deleted.', 'error');
+    }
+  };
+
+  const handleClearAllData = async () => {
+    if (confirmText !== 'DELETE') return;
     try {
       setClearingData(true);
-      const res = await studentService.clearAllStudents();
-      const deletedCount = res?.data?.deletedCount ?? stats.studentsCount;
-      addToast(`Cleared ${deletedCount} student record(s).`, 'success');
+      const res = await schoolDataService.clearAll();
+      setClearResult(res?.data || { deleted: {}, total: 0 });
+      setClearStep('done');
+      addToast('All school data has been cleared.', 'success');
       await loadDashboardData();
     } catch (err) {
-      addToast(err.response?.data?.message || 'Failed to clear student data', 'error');
+      addToast(err.response?.data?.message || 'Failed to clear school data', 'error');
+      // a partial failure may have deleted some data: show what is left
+      loadClearSummary();
     } finally {
       setClearingData(false);
     }
@@ -281,10 +330,10 @@ export const AdminDashboard = () => {
               )}
             </div>
             <button
-              onClick={handleClearAllData}
+              onClick={openClearData}
               disabled={clearingData}
               className="btn btn-danger-quiet btn-sm"
-              title="Permanently delete every student record"
+              title="Back up, then permanently delete all of the school's data"
             >
               <Trash2 size={13} />
               <span>{clearingData ? 'Clearing...' : 'Clear data'}</span>
@@ -455,6 +504,156 @@ export const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Clear data: offer a backup first, then confirm by typing DELETE */}
+      <Modal
+        isOpen={clearOpen}
+        onClose={closeClearData}
+        title={clearStep === 'done' ? 'School data cleared' : 'Clear all school data'}
+        icon={Trash2}
+        maxWidth="560px"
+        footer={
+          clearStep === 'backup' ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={closeClearData} disabled={backupState === 'downloading'}>
+                Cancel
+              </button>
+              {backupState === 'done' ? (
+                <button type="button" className="btn btn-primary" onClick={() => setClearStep('confirm')}>
+                  Continue
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setClearStep('confirm')}
+                    disabled={loadingClearSummary || !clearSummary || clearSummary.total === 0 || backupState === 'downloading'}
+                  >
+                    Continue without backup
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleDownloadBackup}
+                    disabled={loadingClearSummary || !clearSummary || clearSummary.total === 0 || backupState === 'downloading'}
+                  >
+                    {backupState === 'downloading' ? 'Preparing backup...' : 'Download backup (Excel)'}
+                  </button>
+                </>
+              )}
+            </>
+          ) : clearStep === 'confirm' ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={() => setClearStep('backup')} disabled={clearingData}>
+                Back
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleClearAllData}
+                disabled={confirmText !== 'DELETE' || clearingData}
+              >
+                {clearingData ? 'Deleting...' : 'Delete all data'}
+              </button>
+            </>
+          ) : (
+            <button type="button" className="btn btn-primary" onClick={closeClearData}>
+              Close
+            </button>
+          )
+        }
+      >
+        {clearStep === 'backup' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem' }}>Do you want to back up before clearing all data?</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              A backup is an Excel file with one sheet for each kind of record below, so you keep a readable copy. Passwords and photos are not included.
+            </div>
+            {loadingClearSummary ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Checking what data your school has...</div>
+            ) : !clearSummary ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--danger)' }}>
+                Could not check your school's data.{' '}
+                <button type="button" className="btn btn-secondary btn-sm" onClick={loadClearSummary}>Try again</button>
+              </div>
+            ) : clearSummary.total === 0 ? (
+              <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Your school has no records to clear.</div>
+            ) : (
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Will be deleted ({clearSummary.total.toLocaleString('en-IN')} records)
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {nonZero(clearSummary.counts).map(([label, n]) => (
+                    <span key={label} className="badge badge-secondary">{label}: {Number(n).toLocaleString('en-IN')}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Kept: admin and teacher logins, module settings, and the class, subject, exam and leave-reason lists.
+            </div>
+            {backupState === 'done' && (
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CheckCircle2 size={16} /> Backup downloaded. You can continue.
+              </div>
+            )}
+          </div>
+        )}
+
+        {clearStep === 'confirm' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div
+              role="alert"
+              style={{ padding: '0.7rem 0.9rem', borderRadius: '8px', border: '1px solid #fecaca', backgroundColor: '#fef2f2', color: '#991b1b', fontSize: '0.88rem', fontWeight: 600 }}
+            >
+              This permanently deletes {clearSummary?.total?.toLocaleString('en-IN') ?? 'all'} records from your school and cannot be undone.
+            </div>
+            {backupState !== 'done' && (
+              <div style={{ padding: '0.6rem 0.9rem', borderRadius: '8px', border: '1px solid #fcd34d', backgroundColor: '#fffbeb', color: '#92400e', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span>You have not downloaded a backup.</span>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleDownloadBackup} disabled={backupState === 'downloading'}>
+                  {backupState === 'downloading' ? 'Preparing backup...' : 'Download backup now'}
+                </button>
+              </div>
+            )}
+            {backupState === 'done' && (
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <CheckCircle2 size={16} /> Backup downloaded
+              </div>
+            )}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" htmlFor="clear-confirm">Type DELETE to confirm</label>
+              <input
+                id="clear-confirm"
+                type="text"
+                className="form-input"
+                autoComplete="off"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE"
+              />
+            </div>
+          </div>
+        )}
+
+        {clearStep === 'done' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            <div style={{ fontWeight: 700 }}>
+              {(clearResult?.total ?? 0).toLocaleString('en-IN')} records were deleted from your school.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {nonZero(clearResult?.deleted).map(([label, n]) => (
+                <span key={label} className="badge badge-secondary">{label}: {Number(n).toLocaleString('en-IN')}</span>
+              ))}
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Logins, module settings and the class, subject, exam and leave-reason lists were kept, so you can upload fresh data now.
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={showAllBirthdays}

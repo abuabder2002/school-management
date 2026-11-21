@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { Edit2, Trash2, Plus, X } from 'lucide-react';
 import { toDisplayClassName, toApplicationClassName, compareAcademicClasses, isClassMatch } from '../../utils/academicClassOrder';
+import { SESSION_OPTIONS } from '../../utils/sessionOptions';
 
 const ADD_MANUALLY = '__add_manually__';
 
@@ -16,6 +17,7 @@ const emptyForm = () => ({
   subjectName: '',
   teacherName: '',
   block: 'A',
+  sessionName: '', // optional
 });
 
 export const DailySchedulePage = () => {
@@ -170,7 +172,7 @@ export const DailySchedulePage = () => {
     }
     setSaving(true);
     try {
-      const payload = { ...form, section: form.section || null };
+      const payload = { ...form, section: form.section || null, sessionName: form.sessionName || null };
       if (editingId) {
         await scheduleService.update(editingId, payload);
         addToast('Schedule entry updated.', 'success');
@@ -196,6 +198,7 @@ export const DailySchedulePage = () => {
       subjectName: entry.subjectName || '',
       teacherName: entry.teacherName || '',
       block: entry.block || 'A',
+      sessionName: entry.sessionName || '',
     });
   };
 
@@ -216,7 +219,7 @@ export const DailySchedulePage = () => {
       <div className="page-header" style={{ marginBottom: '1.25rem' }}>
         <div>
           <h1 className="page-title">Daily Schedule</h1>
-          <p className="page-subtitle">Log each day's class schedule by block.</p>
+          <p className="page-subtitle">Log each day's class schedule by block and session.</p>
         </div>
       </div>
 
@@ -334,6 +337,23 @@ export const DailySchedulePage = () => {
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" htmlFor="schedule-session">Session</label>
+                <select
+                  id="schedule-session"
+                  className="form-select"
+                  value={form.sessionName}
+                  onChange={(e) => setForm({ ...form, sessionName: e.target.value })}
+                >
+                  <option value="">Select...</option>
+                  {SESSION_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                  {form.sessionName && !SESSION_OPTIONS.includes(form.sessionName) && (
+                    <option value={form.sessionName}>{form.sessionName}</option>
+                  )}
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">A Block / B Block</label>
                 <select className="form-select" value={form.block} onChange={(e) => setForm({ ...form, block: e.target.value })}>
                   <option value="A">A Block</option>
@@ -368,15 +388,16 @@ export const DailySchedulePage = () => {
                 <th>Section</th>
                 <th>Subject</th>
                 <th>Staff</th>
+                <th>Session</th>
                 <th>Block</th>
                 <th style={{ textAlign: 'right' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</td></tr>
               ) : entries.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No schedule entries yet.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No schedule entries yet.</td></tr>
               ) : entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{entry.scheduleDate}</td>
@@ -384,6 +405,7 @@ export const DailySchedulePage = () => {
                   <td>{entry.section || '—'}</td>
                   <td>{entry.subjectName}</td>
                   <td>{entry.teacherName || '—'}</td>
+                  <td>{entry.sessionName || '—'}</td>
                   <td>{entry.block} Block</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button className="btn-icon" onClick={() => handleEdit(entry)} title="Edit"><Edit2 size={14} /></button>

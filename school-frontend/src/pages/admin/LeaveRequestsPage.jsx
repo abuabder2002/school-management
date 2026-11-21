@@ -4,19 +4,8 @@ import { studentService } from '../../services/studentService';
 import { useToast } from '../../context/ToastContext';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
 import { toDisplayClassName, CLASS_CONFIG } from '../../utils/academicClassOrder';
+import { SESSION_OPTIONS } from '../../utils/sessionOptions';
 import { CalendarCheck2, FileText, Search, RefreshCw, User, Plus, X, Users, GraduationCap } from 'lucide-react';
-
-const SESSION_OPTIONS = [
-  '5 AM - 7 AM',
-  '6 AM - 8 AM',
-  '9 AM - 12 Noon',
-  '4 PM - 7 PM',
-  '5 PM - 7 PM',
-  '5 PM - 8 PM',
-  '6 PM - 8:30 PM',
-  'Morning Session',
-  'Afternoon Session',
-];
 
 /**
  * Admin Leave Records page.
