@@ -51,6 +51,8 @@ export const FeesPage = () => {
   const [loadingRecentPayments, setLoadingRecentPayments] = useState(false);
   const [paymentsFromDate, setPaymentsFromDate] = useState('');
   const [paymentsToDate, setPaymentsToDate] = useState('');
+  // A browser date box reports '' for a half-typed or impossible date (e.g. 31 Feb); badInput tells those apart from "empty".
+  const [paymentsBadInput, setPaymentsBadInput] = useState({ from: false, to: false });
 
   // Filters for Main View
   const [academicYearFilter, setAcademicYearFilter] = useState('2026-2027');
@@ -108,12 +110,6 @@ export const FeesPage = () => {
     loadClassSummaries();
     loadAllActiveStudents();
   }, []);
-
-  // Reload whenever the Recent Payments date range changes (including back to "no filter").
-  useEffect(() => {
-    loadRecentPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentsFromDate, paymentsToDate]);
 
   const handleExportBillingCSV = () => {
     if (view === 'class-details' && filteredBillingRows.length > 0) {
@@ -284,16 +280,43 @@ export const FeesPage = () => {
   const RECENT_PAYMENTS_RANGE_LIMIT = 500; // must match the limit sent by loadRecentPayments for a date range
   const toLocalISO = (d) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const applyPaymentsPreset = (key) => {
-    const today = new Date();
-    const start = new Date(today);
-    if (key === 'week') start.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Monday
-    else if (key === 'month') start.setDate(1);
-    else if (key === '30d') start.setDate(today.getDate() - 29);
-    else if (key === 'year') { start.setMonth(0); start.setDate(1); }
-    setPaymentsFromDate(toLocalISO(start));
-    setPaymentsToDate(toLocalISO(today));
-  };
+
+  // What is wrong with the typed dates, if anything: { message, from, to } (from/to = which box to outline in red).
+  const paymentsDateIssue = useMemo(() => {
+    const MIN_YEAR = 2000;
+    const check = (value, bad, label) => {
+      if (bad) return `The "${label}" date is incomplete or not a real date (for example 31 Feb). Please correct it.`;
+      if (!value) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+      const [y, mo, d] = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+      const real = m && new Date(y, mo - 1, d).getMonth() === mo - 1 && new Date(y, mo - 1, d).getDate() === d;
+      if (!real) return `The "${label}" date is not valid. Please check the day, month and year.`;
+      if (y < MIN_YEAR) return `The "${label}" date has the year ${m[1]}, which looks like a typing mistake. Please check it.`;
+      return null;
+    };
+    const fromMsg = check(paymentsFromDate, paymentsBadInput.from, 'From');
+    if (fromMsg) return { message: fromMsg, from: true, to: false };
+    const toMsg = check(paymentsToDate, paymentsBadInput.to, 'To');
+    if (toMsg) return { message: toMsg, from: false, to: true };
+    if (paymentsFromDate && paymentsFromDate > toLocalISO(new Date())) {
+      return { message: 'The "From" date is in the future, so no payments can exist yet. Please choose an earlier date.', from: true, to: false };
+    }
+    if (paymentsFromDate && paymentsToDate && paymentsFromDate > paymentsToDate) {
+      return { message: 'The "From" date is after the "To" date. Please correct one of them.', from: true, to: true };
+    }
+    return null;
+  }, [paymentsFromDate, paymentsToDate, paymentsBadInput]);
+
+  // Reload whenever the Recent Payments date range changes (including back to "no filter"), but never for a wrong range.
+  useEffect(() => {
+    if (paymentsDateIssue) {
+      setRecentPayments([]);
+      setLoadingRecentPayments(false);
+      return;
+    }
+    loadRecentPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentsFromDate, paymentsToDate, paymentsDateIssue]);
 
   const paymentSummary = useMemo(() => {
     if (!paymentsFromDate && !paymentsToDate) return null;
@@ -1334,9 +1357,14 @@ export const FeesPage = () => {
                   className="form-input"
                   value={paymentsFromDate}
                   max={paymentsToDate || undefined}
-                  onChange={(e) => setPaymentsFromDate(e.target.value)}
+                  onChange={(e) => {
+                    setPaymentsFromDate(e.target.value);
+                    setPaymentsBadInput((b) => ({ ...b, from: e.target.validity.badInput }));
+                  }}
                   title="From date"
-                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem' }}
+                  aria-label="From date"
+                  aria-invalid={paymentsDateIssue?.from ? 'true' : undefined}
+                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem', ...(paymentsDateIssue?.from ? { borderColor: '#dc2626', boxShadow: '0 0 0 2px rgba(220,38,38,0.15)' } : null) }}
                 />
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to</span>
                 <input
@@ -1344,16 +1372,21 @@ export const FeesPage = () => {
                   className="form-input"
                   value={paymentsToDate}
                   min={paymentsFromDate || undefined}
-                  onChange={(e) => setPaymentsToDate(e.target.value)}
+                  onChange={(e) => {
+                    setPaymentsToDate(e.target.value);
+                    setPaymentsBadInput((b) => ({ ...b, to: e.target.validity.badInput }));
+                  }}
                   title="To date"
-                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem' }}
+                  aria-label="To date"
+                  aria-invalid={paymentsDateIssue?.to ? 'true' : undefined}
+                  style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.4rem', ...(paymentsDateIssue?.to ? { borderColor: '#dc2626', boxShadow: '0 0 0 2px rgba(220,38,38,0.15)' } : null) }}
                 />
-                {(paymentsFromDate || paymentsToDate) && (
+                {(paymentsFromDate || paymentsToDate || paymentsBadInput.from || paymentsBadInput.to) && (
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                    onClick={() => { setPaymentsFromDate(''); setPaymentsToDate(''); }}
+                    onClick={() => { setPaymentsFromDate(''); setPaymentsToDate(''); setPaymentsBadInput({ from: false, to: false }); }}
                   >
                     Clear
                   </button>
@@ -1371,29 +1404,27 @@ export const FeesPage = () => {
               </div>
             </div>
 
-            {/* Quick ranges + collection summary for the selected dates */}
+            {/* Collection summary for the selected dates */}
             <div style={{ padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border-subtle)', backgroundColor: '#fbfdfc' }}>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>Quick range:</span>
-                {[['week', 'This week'], ['month', 'This month'], ['30d', 'Last 30 days'], ['year', 'This year']].map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}
-                    onClick={() => applyPaymentsPreset(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {!paymentSummary ? (
-                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Pick a "from" and "to" date (or a quick range) to see how much was collected in that period.
+              {paymentsDateIssue ? (
+                <div
+                  role="alert"
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '0.5rem',
+                    padding: '0.6rem 0.8rem', borderRadius: '6px',
+                    border: '1px solid #fcd34d', backgroundColor: '#fffbeb', color: '#92400e',
+                    fontSize: '0.82rem', fontWeight: 600,
+                  }}
+                >
+                  <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+                  <span>{paymentsDateIssue.message}</span>
+                </div>
+              ) : !paymentSummary ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Pick a "from" and "to" date to see how much was collected in that period.
                 </div>
               ) : loadingRecentPayments ? null : (
-                <div style={{ marginTop: '0.75rem' }}>
+                <div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.6rem' }}>
                     {[
                       { label: 'Total collected', value: formatCurrency(paymentSummary.total), sub: `${paymentSummary.days} day${paymentSummary.days === 1 ? '' : 's'} in range`, strong: true },
@@ -1467,15 +1498,17 @@ export const FeesPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ) : recentPayments.length === 0 ? (
+                  ) : paymentsDateIssue || recentPayments.length === 0 ? (
                     <tr>
                       <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
                           <CreditCard size={28} style={{ opacity: 0.35 }} />
                           <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                            No recent payments recorded
+                            {paymentsDateIssue ? 'Payments are hidden until the dates are corrected' : 'No recent payments recorded'}
                           </span>
-                          <span style={{ fontSize: '0.8rem' }}>Payments collected will appear here automatically.</span>
+                          <span style={{ fontSize: '0.8rem' }}>
+                            {paymentsDateIssue ? 'Fix the date warning above, or press Clear.' : 'Payments collected will appear here automatically.'}
+                          </span>
                         </div>
                       </td>
                     </tr>

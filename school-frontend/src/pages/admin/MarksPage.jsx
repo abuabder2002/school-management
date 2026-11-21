@@ -26,6 +26,48 @@ import { CLASS_CONFIG, toDisplayClassName, compareAcademicClasses } from '../../
 
 const BULK_SUBJECTS_STORAGE_KEY = 'marks.bulkTemplateSubjectIds';
 
+// Marks View "Filter Subject" value for the Total option. "Total" is worked out on the page (the sum of each
+// student's subject marks for an exam), never stored as a subject, so it can't be double-counted in averages
+// or show up as a subject elsewhere (Enter Marks, Parent portal).
+const TOTAL_SUBJECT = '__TOTAL__';
+
+// Folds one-row-per-subject mark records into one Total row per student and exam.
+const buildTotalRows = (marks) => {
+  const byStudentExam = new Map();
+  marks.forEach((m) => {
+    const key = `${m.studentId}|${m.examId ?? m.examName}`;
+    let t = byStudentExam.get(key);
+    if (!t) {
+      t = {
+        id: `total-${key}`,
+        isTotal: true,
+        studentId: m.studentId,
+        admissionNumber: m.admissionNumber,
+        studentName: m.studentName,
+        className: m.className,
+        section: m.section,
+        examName: m.examName,
+        subjectName: 'Total',
+        marksObtained: 0,
+        maxMarks: 0,
+        subjectCount: 0,
+        absentCount: 0,
+      };
+      byStudentExam.set(key, t);
+    }
+    t.marksObtained += Number(m.marksObtained || 0);
+    t.maxMarks += Number(m.maxMarks || 100);
+    t.subjectCount += 1;
+    if (m.grade === 'AB') t.absentCount += 1;
+  });
+  const round2 = (n) => Math.round(n * 100) / 100;
+  return [...byStudentExam.values()].map((t) => ({
+    ...t,
+    marksObtained: round2(t.marksObtained),
+    maxMarks: round2(t.maxMarks),
+  }));
+};
+
 export const MarksPage = () => {
   const { user, isAdmin, isTeacher } = useAuth();
   const { addToast } = useToast();
@@ -439,7 +481,8 @@ export const MarksPage = () => {
         className: viewClass || undefined,
         section: viewSection || undefined,
         examName: viewExam || undefined,
-        subjectName: viewSubject || undefined,
+        // Total needs every subject's marks, so it is fetched unfiltered by subject and summed on the page.
+        subjectName: viewSubject && viewSubject !== TOTAL_SUBJECT ? viewSubject : undefined,
       });
       setRecords(res?.data || []);
     } catch (err) {
@@ -805,7 +848,8 @@ export const MarksPage = () => {
 
 
   // Filtered records in View tab
-  const filteredRecords = records.filter(r => {
+  const displayRecords = viewSubject === TOTAL_SUBJECT ? buildTotalRows(records) : records;
+  const filteredRecords = displayRecords.filter(r => {
     if (!viewSearchQuery) return true;
     const q = viewSearchQuery.toLowerCase();
     return (
@@ -1158,6 +1202,7 @@ export const MarksPage = () => {
                   {subjects.map(s => (
                     <option key={s.id} value={s.name}>{s.name}</option>
                   ))}
+                  <option value={TOTAL_SUBJECT}>Total</option>
                 </select>
               </div>
 
@@ -1236,18 +1281,37 @@ export const MarksPage = () => {
                         <td>
                           <span className="badge badge-primary">{r.examName}</span>
                         </td>
-                        <td><strong>{r.subjectName}</strong></td>
+                        <td>
+                          <strong>{r.subjectName}</strong>
+                          {r.isTotal && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              {r.subjectCount} subject{r.subjectCount === 1 ? '' : 's'}
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <strong style={{ fontSize: '1rem', color: 'var(--primary)' }}>{r.marksObtained}</strong>
                         </td>
                         <td>{r.maxMarks || 100}</td>
                         <td>
-                          <span className={`badge ${['A+', 'A'].includes(r.grade) ? 'badge-success' : ['B+', 'B'].includes(r.grade) ? 'badge-primary' : r.grade === 'F' ? 'badge-danger' : 'badge-warning'}`}>
-                            {r.grade || '—'}
-                          </span>
+                          {(() => {
+                            const grade = r.isTotal ? calculateGrade(r.marksObtained, r.maxMarks) : r.grade;
+                            return (
+                              <span className={`badge ${['A+', 'A'].includes(grade) ? 'badge-success' : ['B+', 'B'].includes(grade) ? 'badge-primary' : grade === 'F' ? 'badge-danger' : 'badge-warning'}`}>
+                                {grade || '—'}
+                              </span>
+                            );
+                          })()}
                         </td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.remarks || '—'}</td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          {r.isTotal
+                            ? (r.absentCount > 0 ? `Absent in ${r.absentCount} subject${r.absentCount === 1 ? '' : 's'}` : '—')
+                            : (r.remarks || '—')}
+                        </td>
                         <td style={{ textAlign: 'center' }}>
+                          {r.isTotal ? (
+                            <span style={{ color: 'var(--text-muted)' }} title="Total is worked out from the subject marks, so it has nothing to edit">—</span>
+                          ) : (
                           <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
                             <button
                               type="button"
@@ -1270,6 +1334,7 @@ export const MarksPage = () => {
                               </button>
                             )}
                           </div>
+                          )}
                         </td>
                       </tr>
                     ))
