@@ -32,6 +32,7 @@ import {
   XCircle,
   Users,
   Pencil,
+  Trash2,
   Download
 } from 'lucide-react';
 import { getClassAcademicRank, compareAcademicClasses, toDisplayClassName } from '../../utils/academicClassOrder';
@@ -90,6 +91,13 @@ export const FeesPage = () => {
   const [paymentModal, setPaymentModal] = useState(false);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const paymentInFlight = useRef(false);
+
+  // Edit / delete a payment from Recent Payments
+  const [editingPayment, setEditingPayment] = useState(null); // the Recent Payments row being edited
+  const [paymentEditForm, setPaymentEditForm] = useState({ amountPaid: '', paymentDate: '', paymentMethod: 'ONLINE', note: '' });
+  const [savingPaymentEdit, setSavingPaymentEdit] = useState(false);
+  const [deletingPayment, setDeletingPayment] = useState(null); // the Recent Payments row to delete
+  const [deletingPaymentBusy, setDeletingPaymentBusy] = useState(false);
   const [selectedFeeForPayment, setSelectedFeeForPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({
     amountPaid: 0,
@@ -620,6 +628,72 @@ export const FeesPage = () => {
       note: 'Tuition installment',
     });
     setPaymentModal(true);
+  };
+
+  // ---- Edit / delete a recorded payment (Recent Payments) ----
+  const refreshAfterPaymentChange = () => {
+    loadRecentPayments();
+    loadClassSummaries(); // the class totals (paid, outstanding, status) move with the payment
+    if (selectedClass) loadStudentBillingForClass(selectedClass);
+  };
+
+  const openPaymentEdit = (p) => {
+    setPaymentEditForm({
+      amountPaid: String(p.amountPaid ?? ''),
+      paymentDate: p.paymentDate || '',
+      paymentMethod: (p.paymentMethod || 'ONLINE').toUpperCase(),
+      note: p.note || '',
+    });
+    setEditingPayment(p);
+  };
+
+  const handlePaymentEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingPayment || savingPaymentEdit) return;
+    const amount = parseFloat(paymentEditForm.amountPaid);
+    if (!(amount > 0)) {
+      addToast('Enter an amount greater than zero.', 'warning');
+      return;
+    }
+    if (!paymentEditForm.paymentDate) {
+      addToast('Payment date is required.', 'warning');
+      return;
+    }
+    if (paymentEditForm.paymentDate > toLocalISO(new Date())) {
+      addToast('The payment date cannot be in the future.', 'warning');
+      return;
+    }
+    try {
+      setSavingPaymentEdit(true);
+      await feeService.updatePayment(editingPayment.id, {
+        amountPaid: amount,
+        paymentDate: paymentEditForm.paymentDate,
+        paymentMethod: paymentEditForm.paymentMethod,
+        note: paymentEditForm.note,
+      });
+      addToast('Payment updated.', 'success');
+      setEditingPayment(null);
+      refreshAfterPaymentChange();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to update the payment.', 'error');
+    } finally {
+      setSavingPaymentEdit(false);
+    }
+  };
+
+  const confirmPaymentDelete = async () => {
+    if (!deletingPayment || deletingPaymentBusy) return;
+    try {
+      setDeletingPaymentBusy(true);
+      await feeService.deletePayment(deletingPayment.id);
+      addToast('Payment deleted.', 'success');
+      setDeletingPayment(null);
+      refreshAfterPaymentChange();
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Failed to delete the payment.', 'error');
+    } finally {
+      setDeletingPaymentBusy(false);
+    }
   };
 
   const handleRecordPaymentSubmit = async (e) => {
@@ -1486,12 +1560,13 @@ export const FeesPage = () => {
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Method</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Status</th>
                     <th style={{ padding: '0.75rem 1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Note</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingRecentPayments ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
                           <RotateCcw size={18} className="animate-spin text-primary" />
                           <span style={{ fontSize: '0.85rem' }}>Loading recent transactions...</span>
@@ -1500,7 +1575,7 @@ export const FeesPage = () => {
                     </tr>
                   ) : paymentsDateIssue || recentPayments.length === 0 ? (
                     <tr>
-                      <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
                           <CreditCard size={28} style={{ opacity: 0.35 }} />
                           <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
@@ -1575,6 +1650,27 @@ export const FeesPage = () => {
                         </td>
                         <td style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {p.note || '—'}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            onClick={() => openPaymentEdit(p)}
+                            title="Edit this payment"
+                            aria-label={`Edit payment of ${p.studentName || 'student'}`}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-icon"
+                            onClick={() => setDeletingPayment(p)}
+                            title="Delete this payment"
+                            aria-label={`Delete payment of ${p.studentName || 'student'}`}
+                            style={{ color: '#dc2626' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -2203,6 +2299,132 @@ export const FeesPage = () => {
           loadAllActiveStudents();
         }}
       />
+
+      {/* Edit a recorded payment (Recent Payments) */}
+      <Modal
+        isOpen={!!editingPayment}
+        onClose={() => { if (!savingPaymentEdit) setEditingPayment(null); }}
+        title="Edit Payment"
+        icon={Pencil}
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setEditingPayment(null)} disabled={savingPaymentEdit}>
+              Cancel
+            </button>
+            <button type="submit" form="editPaymentForm" className="btn btn-primary" disabled={savingPaymentEdit}>
+              {savingPaymentEdit ? 'Saving…' : 'Save Changes'}
+            </button>
+          </>
+        }
+      >
+        <form id="editPaymentForm" onSubmit={handlePaymentEditSubmit}>
+          <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', border: '1px solid var(--border-subtle)' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{editingPayment?.studentName}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Class: {editingPayment?.className || '—'} | Adm No: {editingPayment?.admissionNumber || '—'}
+            </div>
+            <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              The student's paid and outstanding amounts change by the difference when you save.
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label" htmlFor="edit-payment-amount">Payment Amount (₹) *</label>
+            <input
+              id="edit-payment-amount"
+              type="number"
+              step="0.01"
+              min="0.01"
+              className="form-control"
+              required
+              value={paymentEditForm.amountPaid}
+              onChange={(e) => setPaymentEditForm({ ...paymentEditForm, amountPaid: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label" htmlFor="edit-payment-date">Payment Date *</label>
+            <input
+              id="edit-payment-date"
+              type="date"
+              className="form-control"
+              required
+              max={toLocalISO(new Date())}
+              value={paymentEditForm.paymentDate}
+              onChange={(e) => setPaymentEditForm({ ...paymentEditForm, paymentDate: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label" htmlFor="edit-payment-method">Payment Method</label>
+            <select
+              id="edit-payment-method"
+              className="form-control"
+              value={paymentEditForm.paymentMethod}
+              onChange={(e) => setPaymentEditForm({ ...paymentEditForm, paymentMethod: e.target.value })}
+            >
+              <option value="ONLINE">Online / UPI</option>
+              <option value="CASH">Cash</option>
+              <option value="BANK">Bank Transfer</option>
+              <option value="CHEQUE">Cheque</option>
+              {!['ONLINE', 'CASH', 'BANK', 'CHEQUE'].includes(paymentEditForm.paymentMethod) && (
+                <option value={paymentEditForm.paymentMethod}>{paymentEditForm.paymentMethod}</option>
+              )}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="edit-payment-note">Note</label>
+            <input
+              id="edit-payment-note"
+              type="text"
+              className="form-control"
+              placeholder="e.g. Receipt #1042 / UPI Transaction ID"
+              value={paymentEditForm.note}
+              onChange={(e) => setPaymentEditForm({ ...paymentEditForm, note: e.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Delete a recorded payment (Recent Payments) */}
+      <Modal
+        isOpen={!!deletingPayment}
+        onClose={() => { if (!deletingPaymentBusy) setDeletingPayment(null); }}
+        title="Delete Payment?"
+        icon={Trash2}
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingPayment(null)} disabled={deletingPaymentBusy}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger" onClick={confirmPaymentDelete} disabled={deletingPaymentBusy}>
+              {deletingPaymentBusy ? 'Deleting…' : 'Delete Payment'}
+            </button>
+          </>
+        }
+      >
+        {deletingPayment && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontWeight: 600 }}>{deletingPayment.studentName}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Class: {deletingPayment.className || '—'} | Adm No: {deletingPayment.admissionNumber || '—'}
+              </div>
+              <div style={{ marginTop: '0.5rem', fontWeight: 700, color: '#047857', fontSize: '1.05rem' }}>
+                {formatCurrency(deletingPayment.amountPaid)}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {formatDate(deletingPayment.paymentDate)} · {(deletingPayment.paymentMethod || 'ONLINE').toUpperCase()}
+                {deletingPayment.note ? ` · ${deletingPayment.note}` : ''}
+              </div>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#991b1b' }}>
+              This removes the payment and adds {formatCurrency(deletingPayment.amountPaid)} back to the student's outstanding amount. It cannot be undone.
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Record Payment Modal */}
       <Modal

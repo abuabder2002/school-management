@@ -58,6 +58,18 @@ export const feeService = {
     return response.data;
   },
 
+  // Correct a recorded payment (amountPaid, paymentDate, paymentMethod, note); the bill moves by the difference.
+  updatePayment: async (paymentId, paymentData) => {
+    const response = await api.put(`/api/fees/payments/${paymentId}`, paymentData);
+    return response.data;
+  },
+
+  // Remove a recorded payment; the amount goes back onto the bill.
+  deletePayment: async (paymentId) => {
+    const response = await api.delete(`/api/fees/payments/${paymentId}`);
+    return response.data;
+  },
+
   getPaymentsByFee: async (feeId) => {
     const response = await api.get(`/api/fees/${feeId}/payments`);
     return response.data;
