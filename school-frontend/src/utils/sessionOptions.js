@@ -10,4 +10,5 @@ export const SESSION_OPTIONS = [
   '6 PM - 8:30 PM',
   'Morning Session',
   'Afternoon Session',
+  'Full Day',
 ];

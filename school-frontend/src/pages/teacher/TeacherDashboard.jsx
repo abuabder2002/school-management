@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFeatureToggles } from '../../hooks/useFeatureToggles';
 import { Modal } from '../../components/common/Modal';
 import { Breadcrumb } from '../../components/common/Breadcrumb';
+import { BoardResultsView } from '../../components/common/BoardResultsView';
 import {
   BookOpen,
   Calendar,
@@ -21,11 +22,12 @@ import {
   RefreshCw,
   ExternalLink,
   UserCheck,
+  GraduationCap,
 } from 'lucide-react';
 import { CLASS_CONFIG, toDisplayClassName } from '../../utils/academicClassOrder';
 
 export const TeacherDashboard = () => {
-  // Tabs: 'homework' | 'leave' | 'holidays' | 'notifications'
+  // Tabs: 'homework' | 'leave' | 'holidays' | 'board_results' | 'notifications'
   const [activeTab, setActiveTab] = useState('homework');
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +74,11 @@ export const TeacherDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
+  // Board Results State (read-only, fetched the first time the tab is opened: results can carry photos)
+  const [boardResults, setBoardResults] = useState([]);
+  const [loadingBoardResults, setLoadingBoardResults] = useState(false);
+  const [boardResultsLoaded, setBoardResultsLoaded] = useState(false);
+
   const { addToast } = useToast();
   const { user } = useAuth();
   const { isEnabled, loading: togglesLoading } = useFeatureToggles('TEACHER');
@@ -81,7 +88,7 @@ export const TeacherDashboard = () => {
   useEffect(() => {
     if (togglesLoading) return;
     if (isEnabled(activeTab.toUpperCase())) return;
-    const fallback = ['homework', 'leave', 'holidays', 'notifications'].find((t) => isEnabled(t.toUpperCase()));
+    const fallback = ['homework', 'leave', 'holidays', 'board_results', 'notifications'].find((t) => isEnabled(t.toUpperCase()));
     if (fallback) setActiveTab(fallback);
   }, [togglesLoading, isEnabled, activeTab]);
 
@@ -219,6 +226,19 @@ export const TeacherDashboard = () => {
     }
   };
 
+  const loadBoardResults = async () => {
+    try {
+      setLoadingBoardResults(true);
+      const res = await academicService.getBoardResults();
+      setBoardResults(res?.success && Array.isArray(res.data) ? res.data : []);
+      setBoardResultsLoaded(true);
+    } catch (err) {
+      addToast('Failed to load board results', 'error');
+    } finally {
+      setLoadingBoardResults(false);
+    }
+  };
+
   return (
     <div>
       <Breadcrumb items={[{ label: 'Teacher Dashboard' }]} />
@@ -227,7 +247,7 @@ export const TeacherDashboard = () => {
         <div>
           <h1 className="page-title">Teacher Command Center</h1>
           <p className="page-subtitle">
-            Manage homework assignments, review student leave requests, check official holidays, and view announcements.
+            Manage homework assignments, review student leave requests, check official holidays, view board results, and read announcements.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
@@ -267,6 +287,17 @@ export const TeacherDashboard = () => {
             className={`btn btn-sm ${activeTab === 'holidays' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <Sun size={16} /> Holidays Calendar ({holidays.length})
+          </button>
+        )}
+        {isEnabled('BOARD_RESULTS') && (
+          <button
+            onClick={() => {
+              setActiveTab('board_results');
+              if (!boardResultsLoaded) loadBoardResults();
+            }}
+            className={`btn btn-sm ${activeTab === 'board_results' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            <GraduationCap size={16} /> Board Results
           </button>
         )}
         {isEnabled('NOTIFICATIONS') && (
@@ -416,6 +447,7 @@ export const TeacherDashboard = () => {
                   <th>Admission No</th>
                   <th>Class & Section</th>
                   <th>Leave Date</th>
+                  <th>Session</th>
                   <th>Reason</th>
                   <th>Submitted On</th>
                   <th style={{ textAlign: 'center', width: '120px' }}>Status</th>
@@ -424,7 +456,7 @@ export const TeacherDashboard = () => {
               <tbody>
                 {leaveRequests.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
                       {loading ? 'Loading leave records...' : 'No student leave records for your assigned class.'}
                     </td>
                   </tr>
@@ -448,6 +480,7 @@ export const TeacherDashboard = () => {
                         <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.875rem' }}>{admissionNo}</td>
                         <td><span className="badge badge-primary">{classDisplay}</span></td>
                         <td style={{ fontWeight: 600 }}>{leaveDate}</td>
+                        <td>{r.session || '—'}</td>
                         <td style={{ maxWidth: '280px', fontSize: '0.875rem' }}>{r.reason || '—'}</td>
                         <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{submittedOn}</td>
                         <td style={{ textAlign: 'center' }}>
@@ -503,6 +536,11 @@ export const TeacherDashboard = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Tab: Board Results (read-only) */}
+      {activeTab === 'board_results' && isEnabled('BOARD_RESULTS') && (
+        <BoardResultsView results={boardResults} loading={loadingBoardResults} />
       )}
 
       {/* Tab 4: Notifications */}

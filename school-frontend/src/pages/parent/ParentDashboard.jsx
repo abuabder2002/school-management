@@ -8,6 +8,8 @@ import { leaveService } from '../../services/leaveService';
 import { notificationService } from '../../services/notificationService';
 import { homeworkService } from '../../services/homeworkService';
 import { useFeatureToggles } from '../../hooks/useFeatureToggles';
+import { BoardResultsView } from '../../components/common/BoardResultsView';
+import { SESSION_OPTIONS } from '../../utils/sessionOptions';
 import {
   User,
   DollarSign,
@@ -71,7 +73,7 @@ export const ParentDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   // Leave form state
-  const [leaveForm, setLeaveForm] = useState({ startDate: '', selectedReasonId: '', customReason: '' });
+  const [leaveForm, setLeaveForm] = useState({ startDate: '', session: '', selectedReasonId: '', customReason: '' });
   const [submittingLeave, setSubmittingLeave] = useState(false);
 
   const parentId = user?.userId;
@@ -174,6 +176,10 @@ export const ParentDashboard = () => {
       addToast('Start date is required', 'warning');
       return;
     }
+    if (!leaveForm.session) {
+      addToast('Please select the session', 'warning');
+      return;
+    }
     // Determine final reason text
     let reasonText = '';
     if (leaveForm.selectedReasonId === 'OTHER') {
@@ -196,12 +202,13 @@ export const ParentDashboard = () => {
       const payload = {
         startDate: leaveForm.startDate,
         leaveDate: leaveForm.startDate,
+        session: leaveForm.session,
         reason: reasonText,
       };
       const res = await leaveService.submit(payload);
       if (res.success) {
         addToast('Leave recorded successfully.', 'success');
-        setLeaveForm({ startDate: '', selectedReasonId: '', customReason: '' });
+        setLeaveForm({ startDate: '', session: '', selectedReasonId: '', customReason: '' });
         const lvRes = await leaveService.getMyLeave();
         if (lvRes.success && lvRes.data) setLeaveRequests(lvRes.data);
       } else {
@@ -848,60 +855,7 @@ export const ParentDashboard = () => {
 
       {/* Board Results — high scorers entered by Super Admin */}
       {activeTab === 'board_results' && isEnabled('BOARD_RESULTS') && (
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <GraduationCap size={15} color="var(--primary)" />
-              Board Results
-            </h3>
-          </div>
-          <div style={{ padding: '0 0 0.5rem' }}>
-            {boardResults.length === 0 && (
-              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 1.5rem' }}>
-                No board results published yet.
-              </div>
-            )}
-            {boardResults.map((r) => (
-              <div key={r.id} style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {r.photo ? (
-                      <img src={r.photo} alt="" style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border-subtle)' }} />
-                    ) : (
-                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--bg-secondary, #f1f5f9)', flexShrink: 0 }} />
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{r.studentName}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {r.board === 'STATE_BOARD' ? 'State Board' : r.board} · Class {r.standard} · {r.academicYear}
-                        {r.schoolName ? ` · ${r.schoolName}` : ''}{r.area ? `, ${r.area}` : ''}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="badge badge-success">Total: {r.totalMarks}</span>
-                </div>
-                <div className="table-container" style={{ border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
-                  <table className="table" style={{ margin: 0 }}>
-                    <thead>
-                      <tr>
-                        <th>Subject</th>
-                        <th style={{ textAlign: 'right' }}>Marks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(r.subjects || []).map((s, idx) => (
-                        <tr key={idx}>
-                          <td>{s.subjectName}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{s.marks}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <BoardResultsView results={boardResults} />
       )}
 
       {/* ========================================================================= */}
@@ -932,6 +886,24 @@ export const ParentDashboard = () => {
                       onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
                       required
                     />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" htmlFor="leave-session">
+                      Session *
+                    </label>
+                    <select
+                      id="leave-session"
+                      className="form-select"
+                      value={leaveForm.session}
+                      onChange={(e) => setLeaveForm({ ...leaveForm, session: e.target.value })}
+                      required
+                    >
+                      <option value="">Select...</option>
+                      {SESSION_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
@@ -997,6 +969,7 @@ export const ParentDashboard = () => {
                   <tr>
                     <th>Record #</th>
                     <th>Leave Date</th>
+                    <th>Session</th>
                     <th>Reason</th>
                     <th>Submitted On</th>
                     <th style={{ textAlign: 'center' }}>Status</th>
@@ -1005,7 +978,7 @@ export const ParentDashboard = () => {
                 <tbody>
                   {leaveRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
+                      <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem' }}>
                         No leave records submitted yet.
                       </td>
                     </tr>
@@ -1014,6 +987,7 @@ export const ParentDashboard = () => {
                       <tr key={req.id}>
                         <td><strong>#{req.id}</strong></td>
                         <td style={{ fontWeight: 600 }}>{req.startDate}</td>
+                        <td>{req.session || '—'}</td>
                         <td style={{ maxWidth: '360px' }}>{req.reason || '—'}</td>
                         <td style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                           {formatDate(req.createdAt)}
