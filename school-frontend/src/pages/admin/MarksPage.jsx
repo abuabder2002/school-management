@@ -26,6 +26,21 @@ import { CLASS_CONFIG, toDisplayClassName, compareAcademicClasses } from '../../
 
 const BULK_SUBJECTS_STORAGE_KEY = 'marks.bulkTemplateSubjectIds';
 
+// Same canonical class key the server stores Section Subjects under:
+// "Class 11", "XI", "Std 11", "11th" -> "11"; "L.K.G" -> "LKG".
+const ROMAN_CLASSES = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+const classKeyOf = (className) => {
+  if (!className) return '';
+  let s = String(className).toUpperCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  s = s.replace(/^(?:CLASS|GRADE|STANDARD|STD)\s*/, '').trim();
+  if (s === 'PRE-KG' || s === 'PREKG' || s === 'PRE KG') return 'PREKG';
+  if (/^\d+(?:ST|ND|RD|TH)?$/.test(s)) return String(parseInt(s, 10));
+  const roman = ROMAN_CLASSES.indexOf(s);
+  return roman >= 0 ? String(roman + 1) : s;
+};
+const sectionKeyOf = (section) => (section ? String(section).trim().replace(/^section\s*/i, '').trim().toUpperCase() : '');
+const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+
 // Marks View "Filter Subject" value for the Total option. "Total" is worked out on the page (the sum of each
 // student's subject marks for an exam), never stored as a subject, so it can't be double-counted in averages
 // or show up as a subject elsewhere (Enter Marks, Parent portal).
@@ -120,6 +135,15 @@ export const MarksPage = () => {
       return [];
     }
   });
+  const [bulkSection, setBulkSection] = useState(''); // '' = all sections
+  const [bulkSectionOptions, setBulkSectionOptions] = useState([]);
+  const [sectionSubjects, setSectionSubjects] = useState([]); // [{ className: '11', section: 'A', subjectIds: [] }]
+  const [savingSectionSubjects, setSavingSectionSubjects] = useState(false);
+  // Section Subjects setup card (Subjects & Exams tab)
+  const [setupClass, setSetupClass] = useState('');
+  const [setupSection, setSetupSection] = useState('');
+  const [setupSectionOptions, setSetupSectionOptions] = useState([]);
+  const [setupSubjectIds, setSetupSubjectIds] = useState([]);
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -197,11 +221,15 @@ export const MarksPage = () => {
   const loadMasterData = async () => {
     try {
       setLoadingMaster(true);
-      const [clsRes, exRes, subRes] = await Promise.allSettled([
+      const [clsRes, exRes, subRes, secSubRes] = await Promise.allSettled([
         studentService.getDistinctClasses(),
         marksService.getExams(),
         marksService.getSubjects(),
+        marksService.getSectionSubjects(),
       ]);
+
+      const rawSectionSubjects = secSubRes.status === 'fulfilled' ? (secSubRes.value?.data || secSubRes.value || []) : [];
+      setSectionSubjects(Array.isArray(rawSectionSubjects) ? rawSectionSubjects : []);
 
       let classList = [];
       const rawClasses = clsRes.status === 'fulfilled' ? (clsRes.value?.data || clsRes.value || []) : [];
@@ -278,6 +306,61 @@ export const MarksPage = () => {
     })();
     return () => { cancelled = true; };
   }, [viewClass]);
+
+  // Bulk Upload: the template class's real sections ('' = every section of the class).
+  useEffect(() => {
+    if (!bulkClass) {
+      setBulkSectionOptions([]);
+      setBulkSection('');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const sections = await fetchSectionsForClass(bulkClass);
+      if (cancelled) return;
+      setBulkSectionOptions(sections);
+      setBulkSection((prev) => (sections.includes(prev) ? prev : ''));
+    })();
+    return () => { cancelled = true; };
+  }, [bulkClass]);
+
+  // Section Subjects setup card: sections of the chosen class.
+  useEffect(() => {
+    if (!setupClass) {
+      setSetupSectionOptions([]);
+      setSetupSection('');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const sections = await fetchSectionsForClass(setupClass);
+      if (cancelled) return;
+      setSetupSectionOptions(sections);
+      setSetupSection((prev) => sections.find((s) => sectionKeyOf(s) === sectionKeyOf(prev)) || sections[0] || '');
+    })();
+    return () => { cancelled = true; };
+  }, [setupClass]);
+
+  // Subjects saved for one class + section, or null when none are set up.
+  const findSectionSubjects = (className, section) => {
+    if (!className || !section) return null;
+    const cls = classKeyOf(className);
+    const sec = sectionKeyOf(section);
+    const entry = sectionSubjects.find((m) => m.className === cls && m.section === sec);
+    return entry && entry.subjectIds?.length ? entry.subjectIds : null;
+  };
+
+  const bulkSectionSubjectIds = findSectionSubjects(bulkClass, bulkSection);
+
+  // Picking a class + section that has its subjects set up ticks exactly those subjects.
+  useEffect(() => {
+    if (bulkSectionSubjectIds) setBulkSubjectIds(bulkSectionSubjectIds);
+  }, [bulkClass, bulkSection, sectionSubjects]);
+
+  // The setup card shows what is saved for the chosen class + section.
+  useEffect(() => {
+    setSetupSubjectIds(findSectionSubjects(setupClass, setupSection) || []);
+  }, [setupClass, setupSection, sectionSubjects]);
 
   // Whenever entry filters change, fetch students and any existing marks for them
   useEffect(() => {
@@ -584,6 +667,7 @@ export const MarksPage = () => {
       setDownloadingTemplate(true);
       const response = await marksService.downloadTemplate({
         className: bulkClass,
+        section: bulkSection,
         subjectIds: bulkSubjects.map(sub => sub.id),
         examName: bulkExam,
       });
@@ -594,7 +678,8 @@ export const MarksPage = () => {
       const link = document.createElement('a');
       link.href = url;
       const classPart = bulkClass ? toDisplayClassName(bulkClass).replace(/\s+/g, '_') : 'All_Classes';
-      link.setAttribute('download', `Mark_${classPart}.xlsx`);
+      const sectionPart = bulkClass && bulkSection ? `_${bulkSection.replace(/\s+/g, '_')}` : '';
+      link.setAttribute('download', `Mark_${classPart}${sectionPart}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -606,6 +691,32 @@ export const MarksPage = () => {
     } finally {
       setDownloadingTemplate(false);
     }
+  };
+
+  // Saves the subjects of one class + section (Admin). Used by the setup card and the Bulk Upload tab.
+  const saveSectionSubjects = async (className, section, subjectIds) => {
+    try {
+      setSavingSectionSubjects(true);
+      const res = await marksService.saveSectionSubjects({ className, section, subjectIds });
+      const saved = res?.data || res;
+      setSectionSubjects((prev) => {
+        const rest = prev.filter((m) => !(m.className === saved.className && m.section === saved.section));
+        return saved.subjectIds?.length ? [...rest, saved] : rest;
+      });
+      const label = `${toDisplayClassName(className)} - ${section}`;
+      addToast(subjectIds.length ? `Subjects saved for ${label}` : `Subjects cleared for ${label}`, 'success');
+    } catch (err) {
+      console.error('Save section subjects error:', err);
+      addToast(err.response?.data?.message || 'Failed to save section subjects', 'error');
+    } finally {
+      setSavingSectionSubjects(false);
+    }
+  };
+
+  // Class name as the page shows it, for a stored class key ("11" -> "Class XI").
+  const displayClassForKey = (key) => {
+    const match = classes.find((c) => classKeyOf(c) === key);
+    return match ? toDisplayClassName(match) : key;
   };
 
   const handleBulkUpload = async (e) => {
@@ -1403,11 +1514,45 @@ export const MarksPage = () => {
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.825rem' }}>Section (for template)</label>
+                  <select
+                    className="form-control"
+                    value={bulkSection}
+                    onChange={(e) => setBulkSection(e.target.value)}
+                    disabled={!bulkClass}
+                  >
+                    <option value="">All Sections</option>
+                    {bulkSectionOptions.map(sec => (
+                      <option key={sec} value={sec}>{sec}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <label className="form-label" style={{ fontWeight: 600, fontSize: '0.825rem' }}>
                 Subjects in the template * ({bulkSubjects.length} selected)
               </label>
+              {bulkClass && bulkSection && (
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                  <span>
+                    {bulkSectionSubjectIds
+                      ? `Subjects set up for ${toDisplayClassName(bulkClass)} - ${bulkSection} are ticked.`
+                      : `No subjects set up for ${toDisplayClassName(bulkClass)} - ${bulkSection} yet. Tick its subjects below.`}
+                  </span>
+                  {isAdmin && bulkSubjectIds.length > 0 && !(bulkSectionSubjectIds && sameIds(bulkSectionSubjectIds, bulkSubjects.map(s => s.id))) && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.78rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                      disabled={savingSectionSubjects}
+                      onClick={() => saveSectionSubjects(bulkClass, bulkSection, bulkSubjects.map(s => s.id))}
+                    >
+                      <Save size={13} /> {savingSectionSubjects ? 'Saving...' : `Save as ${toDisplayClassName(bulkClass)} - ${bulkSection} subjects`}
+                    </button>
+                  )}
+                </div>
+              )}
               {subjects.length === 0 ? (
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   No subjects configured yet. Add subjects in the configuration tab first.
@@ -1446,6 +1591,7 @@ export const MarksPage = () => {
               )}
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>
                 Each subject gets a marks column and an "A subject" column — enter <strong>A</strong> there if the student was absent. Total, Average and Grade are calculated in the sheet.
+                {' '}Every subject column in the uploaded sheet is saved, even one the section is not set up with.
               </div>
             </div>
 
@@ -1467,7 +1613,7 @@ export const MarksPage = () => {
                   {selectedFile ? selectedFile.name : 'Click to browse Excel spreadsheet (.xlsx, .xls)'}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : `Columns: S.No, Mobile, Name, Class, ${bulkSubjects.length ? bulkSubjects.map(sub => sub.name).join(', ') : 'subjects'}, Total, Average, Grade, absent flags`}
+                  {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : `Columns: S.No, Mobile, Name, Class, Section, ${bulkSubjects.length ? bulkSubjects.map(sub => sub.name).join(', ') : 'subjects'}, Total, Average, Grade, absent flags`}
                 </div>
                 <input
                   id="bulk-excel-input"
@@ -1720,6 +1866,122 @@ export const MarksPage = () => {
                     <tr>
                       <td colSpan={3} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
                         No subjects registered yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section Subjects Card */}
+          <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card-header">
+              <h3 className="card-title" style={{ margin: 0 }}>Section Subjects</h3>
+              <p style={{ margin: '0.35rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.825rem' }}>
+                Set which subjects each section studies (for example XI - A: Physics, Chemistry, Maths, Biology).
+                The Bulk Upload mark sheet for that section then has only these subject columns. Sections left empty show every subject.
+              </p>
+            </div>
+            <div style={{ padding: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.825rem' }}>Class</label>
+                  <select className="form-control" value={setupClass} onChange={(e) => setSetupClass(e.target.value)}>
+                    <option value="">Select Class</option>
+                    {classes.map(c => (
+                      <option key={c} value={c}>{toDisplayClassName(c)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.825rem' }}>Section</label>
+                  <select className="form-control" value={setupSection} onChange={(e) => setSetupSection(e.target.value)} disabled={!setupClass}>
+                    {setupSectionOptions.length === 0 && <option value="">No sections found</option>}
+                    {setupSectionOptions.map(sec => (
+                      <option key={sec} value={sec}>{sec}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {setupClass && setupSection && (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {subjects.map(sub => {
+                      const checked = setupSubjectIds.includes(sub.id);
+                      return (
+                        <label
+                          key={sub.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem',
+                            border: `1px solid ${checked ? 'var(--primary)' : 'var(--border-color)'}`,
+                            borderRadius: 'var(--radius-md)',
+                            background: checked ? 'rgba(79, 70, 229, 0.05)' : 'transparent',
+                            cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSetupSubjectIds(prev => (prev.includes(sub.id) ? prev.filter(id => id !== sub.id) : [...prev, sub.id]))}
+                            style={{ accentColor: 'var(--primary)' }}
+                          />
+                          {sub.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem' }}
+                    disabled={savingSectionSubjects}
+                    onClick={() => saveSectionSubjects(setupClass, setupSection, subjects.filter(s => setupSubjectIds.includes(s.id)).map(s => s.id))}
+                  >
+                    <Save size={14} /> {savingSectionSubjects ? 'Saving...' : `Save ${toDisplayClassName(setupClass)} - ${setupSection} subjects`}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Class - Section</th>
+                    <th>Subjects</th>
+                    <th style={{ textAlign: 'right', minWidth: '90px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sectionSubjects.map(m => (
+                    <tr key={`${m.className}|${m.section}`}>
+                      <td><strong>{displayClassForKey(m.className)} - {m.section}</strong></td>
+                      <td>
+                        {subjects.filter(s => m.subjectIds.includes(s.id)).map(s => s.name).join(', ')}
+                      </td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary)' }}
+                          onClick={() => {
+                            const cls = classes.find(c => classKeyOf(c) === m.className);
+                            if (!cls) return;
+                            setSetupClass(cls);
+                            setSetupSection(m.section);
+                          }}
+                        >
+                          <Edit size={13} /> Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {sectionSubjects.length === 0 && (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                        No section subjects set up yet.
                       </td>
                     </tr>
                   )}

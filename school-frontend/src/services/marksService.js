@@ -43,16 +43,28 @@ export const marksService = {
   },
 
   // Mark sheet template: one row per student, one column per selected subject
-  downloadTemplate: async ({ className, subjectIds = [], examName } = {}) => {
+  downloadTemplate: async ({ className, section, subjectIds = [], examName } = {}) => {
     const response = await api.get('/api/academic/marks/bulk-template', {
       params: {
         subjectIds: subjectIds.join(','),
         ...(className && { className }),
+        ...(className && section && { section }),
         ...(examName && { examName }),
       },
       responseType: 'blob',
     });
     return response;
+  },
+
+  // Section Subjects: which subjects each class + section studies (pre-selects the template columns)
+  getSectionSubjects: async () => {
+    const response = await api.get('/api/academic/section-subjects');
+    return response.data;
+  },
+
+  saveSectionSubjects: async ({ className, section, subjectIds }) => {
+    const response = await api.put('/api/academic/section-subjects', { className, section, subjectIds });
+    return response.data;
   },
 
   // Supporting master data
